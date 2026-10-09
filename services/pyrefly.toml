@@ -1,0 +1,14 @@
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+
+# Disable automatic heuristics that treat 'src/' as a special import root.
+# Without this, Pyrefly can choose one nested service src/ root instead of services/.
+disable-search-path-heuristics = true
+
+# Set the search path to the services directory (where pyrefly.toml is located).
+search-path = [".", "src"]
+
+# Query the services virtual environment for dependency/site-package resolution.
+python-interpreter-path = ".venv/bin/python"

@@ -1,0 +1,9 @@
+volumes:
+  node_modules:
+    driver: local
+  pnpm_store:
+    driver: local
+  web-cache:
+    driver: local
+  postgres-data:
+    driver: local

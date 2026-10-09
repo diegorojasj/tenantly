@@ -1,0 +1,13 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  // Formatting is done by the TypeScript language server (see your editor settings), so Biome
+  // only lints; otherwise both would fight over the same files on save.
+  "formatter": { "enabled": false },
+  "css": {
+    "parser": {
+      // Tailwind v4 syntax in frontend/src/index.css: @theme, @utility, @custom-variant, @apply.
+      "tailwindDirectives": true
+    }
+  }
+}
