@@ -1,0 +1,606 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-11 17:42+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+#: services/boards.py:90
+#, python-format
+msgid "%(first)s or %(second)s"
+msgstr "%(first)s o %(second)s"
+
+#: services/boards.py:109
+#, python-format
+msgid "%(n)s %(status)s %(bookings)s"
+msgstr "%(n)s %(bookings)s %(status)s"
+
+#: services/boards.py:111
+msgid "Confirm or decline them so the slot isn't lost."
+msgstr "Confírmalas o recházalas para no perder el horario."
+
+#: services/boards.py:118
+#, python-format
+msgid "%(resources)s due %(when)s"
+msgstr "%(resources)s: devolución %(when)s"
+
+#: services/boards.py:122
+#, python-format
+msgid "%(n)s not returned on time"
+msgid_plural "%(n)s not returned on time"
+msgstr[0] "%(n)s sin devolver a tiempo"
+msgstr[1] "%(n)s sin devolver a tiempo"
+msgstr[2] "%(n)s sin devolver a tiempo"
+
+#: services/boards.py:146
+#, python-format
+msgid "%(n)s arriving without a valid %(documents)s"
+msgid_plural "%(n)s arriving without a valid %(documents)s"
+msgstr[0] "%(n)s llega sin %(documents)s vigente"
+msgstr[1] "%(n)s llegan sin %(documents)s vigente"
+msgstr[2] "%(n)s llegan sin %(documents)s vigente"
+
+#: services/boards.py:164
+#, python-format
+msgid "%(n)s arriving with an open balance"
+msgid_plural "%(n)s arriving with an open balance"
+msgstr[0] "%(n)s llega con saldo pendiente"
+msgstr[1] "%(n)s llegan con saldo pendiente"
+msgstr[2] "%(n)s llegan con saldo pendiente"
+
+#: services/boards.py:166
+#, python-format
+msgid "%(amount)s to collect at the desk"
+msgstr "%(amount)s por cobrar en recepción"
+
+#: services/boards.py:179
+#, python-format
+msgid "%(n)s full session today"
+msgid_plural "%(n)s full sessions today"
+msgstr[0] "%(n)s sesión llena hoy"
+msgstr[1] "%(n)s sesiones llenas hoy"
+msgstr[2] "%(n)s sesiones llenas hoy"
+
+#: services/boards.py:190
+#, python-format
+msgid "%(n)s out of service"
+msgid_plural "%(n)s out of service"
+msgstr[0] "%(n)s fuera de servicio"
+msgstr[1] "%(n)s fuera de servicio"
+msgstr[2] "%(n)s fuera de servicio"
+
+#: services/bookings.py:109
+msgid "That day has already passed"
+msgstr "Ese día ya pasó"
+
+#: services/bookings.py:113
+#, python-format
+msgid "%(location)s takes bookings up to %(n)s days ahead"
+msgstr "%(location)s acepta reservas con hasta %(n)s días de anticipación"
+
+#: services/bookings.py:139
+#, python-format
+msgid "Must fit inside opening hours (%(opens)s to %(closes)s)"
+msgstr "Debe caber dentro del horario de atención (%(opens)s a %(closes)s)"
+
+#: services/bookings.py:145
+msgid "That time has already passed"
+msgstr "Esa hora ya pasó"
+
+#: services/bookings.py:152
+msgid "Pick something that can be booked"
+msgstr "Elige algo que se pueda reservar"
+
+#: services/bookings.py:162
+#, python-format
+msgid "Pick a %(customer)s"
+msgstr "Elige: %(customer)s"
+
+#: services/bookings.py:175
+msgid "That booking is outside your scope"
+msgstr "Esa reserva está fuera de tu alcance"
+
+#: services/bookings.py:256
+msgid "Pick what to book first."
+msgstr "Primero elige qué reservar."
+
+#: services/bookings.py:280
+#, python-format
+msgid "Nothing free that day for %(names)s. Try another day or person."
+msgstr "No hay nada libre ese día para %(names)s. Prueba otro día u otra persona."
+
+#: services/bookings.py:282
+msgid "Nothing free that day. Try another day."
+msgstr "No hay nada libre ese día. Prueba otro día."
+
+#: services/bookings.py:377
+#, python-format
+msgid "on %(day)s at %(time)s"
+msgstr "el %(day)s a las %(time)s"
+
+#: services/bookings.py:407
+msgid "That isn't a class session"
+msgstr "Eso no es una sesión de clase"
+
+#: services/bookings.py:410
+msgid "That session is no longer open"
+msgstr "Esa sesión ya no está abierta"
+
+#: services/bookings.py:416
+#, python-format
+msgid "%(customer)s is already booked"
+msgstr "%(customer)s ya tiene reserva"
+
+#: services/bookings.py:419
+#, python-format
+msgid "%(offering)s is full"
+msgstr "%(offering)s está lleno"
+
+#: services/bookings.py:469
+#, python-format
+msgid "A %(current)s booking can't become %(next)s"
+msgstr "Una reserva en estado “%(current)s” no puede pasar a “%(next)s”"
+
+#: services/bookings.py:479
+#, python-format
+msgid "Wait until %(n)s minutes after the start before marking a no-show"
+msgstr "Espera %(n)s minutos después del inicio antes de marcar una inasistencia"
+
+#: services/catalog.py:83
+msgid "The catalog is shared by every location — ask someone who manages the whole business"
+msgstr "El catálogo es compartido por todas las sedes — pídeselo a alguien que gestione todo el negocio"
+
+#: services/catalog.py:92
+#, python-format
+msgid "%(business)s businesses don't sell %(kind)ss"
+msgstr "Los negocios de tipo %(business)s no venden “%(kind)s”"
+
+#: services/catalog.py:93 services/catalog.py:131 services/fulfilment.py:86
+#: services/parties.py:59 services/resources.py:81
+msgid "This"
+msgstr "Este"
+
+#: services/catalog.py:100
+#, python-format
+msgid "%(offerings)s are priced by the %(units)s"
+msgstr "%(offerings)s se cobran por %(units)s"
+
+#: services/catalog.py:109
+#, python-format
+msgid "A %(time)s offering can't be priced by the %(unit)s"
+msgstr "Una oferta de tipo “%(time)s” no se puede cobrar por %(unit)s"
+
+#: services/catalog.py:115
+msgid "Capacity must be at least 1"
+msgstr "La capacidad debe ser al menos 1"
+
+#: services/catalog.py:118
+msgid "Only fixed-length sessions can be shared by several customers"
+msgstr "Solo las sesiones de duración fija pueden compartirse entre varios clientes"
+
+#: services/catalog.py:130 services/parties.py:58
+#, python-format
+msgid "%(business)s businesses have no subject type '%(type)s'"
+msgstr "Los negocios de tipo %(business)s no tienen el tipo de sujeto “%(type)s”"
+
+#: services/catalog.py:136
+msgid "Sessions several customers share can't each name a subject"
+msgstr "Las sesiones compartidas por varios clientes no pueden indicar un sujeto cada una"
+
+#: services/catalog.py:154 services/customers.py:170 services/resources.py:88
+msgid "Enter a name"
+msgstr "Ingresa un nombre"
+
+#: services/catalog.py:158
+#, python-format
+msgid "Duration must be at least %(n)s minutes"
+msgstr "La duración debe ser de al menos %(n)s minutos"
+
+#: services/catalog.py:161
+msgid "A pack needs at least one credit"
+msgstr "Un paquete necesita al menos un crédito"
+
+#: services/catalog.py:185
+msgid "Unknown offering"
+msgstr "Oferta desconocida"
+
+#: services/clock.py:46
+msgid "Pick a start time"
+msgstr "Elige una hora de inicio"
+
+#: services/clock.py:57
+msgid "Pick a valid day"
+msgstr "Elige un día válido"
+
+#: services/customers.py:120 services/parties.py:183
+msgid "That customer is outside your scope"
+msgstr "Ese cliente está fuera de tu alcance"
+
+#: services/documents.py:113
+#, python-format
+msgid "%(customer)s needs a valid %(documents)s on file before booking"
+msgstr "%(customer)s necesita %(documents)s vigente registrado antes de reservar"
+
+#: services/documents.py:133
+msgid "Unknown document type"
+msgstr "Tipo de documento desconocido"
+
+#: services/documents.py:140
+#, python-format
+msgid "Pick which of %(customer)s's %(subjects)s it is for"
+msgstr "Elige a cuál de %(customer)s corresponde (%(subjects)s)"
+
+#: services/documents.py:142
+msgid "subjects"
+msgstr "sujetos"
+
+#: services/documents.py:146
+#, python-format
+msgid "A %(document)s is for a %(subject)s"
+msgstr "%(document)s corresponde a: %(subject)s"
+
+#: services/documents.py:156
+msgid "Dates must be YYYY-MM-DD"
+msgstr "Las fechas deben tener el formato AAAA-MM-DD"
+
+#: services/documents.py:159
+msgid "A document can't be issued in the future"
+msgstr "Un documento no puede emitirse en el futuro"
+
+#: services/documents.py:164
+msgid "It can't expire before it was issued"
+msgstr "No puede vencer antes de su emisión"
+
+#: services/fields.py:50
+#, python-format
+msgid "Unknown field: %(fields)s"
+msgstr "Campo desconocido: %(fields)s"
+
+#: services/fields.py:57
+#, python-format
+msgid "Enter %(field)s"
+msgstr "Ingresa %(field)s"
+
+#: services/fields.py:72
+#, python-format
+msgid "%(field)s must be a number"
+msgstr "%(field)s debe ser un número"
+
+#: services/fields.py:77
+#, python-format
+msgid "%(field)s must be yes or no"
+msgstr "%(field)s debe ser sí o no"
+
+#: services/fields.py:84
+#, python-format
+msgid "%(field)s must be a date (YYYY-MM-DD)"
+msgstr "%(field)s debe ser una fecha (AAAA-MM-DD)"
+
+#: services/fields.py:88
+#, python-format
+msgid "%(field)s must be one of: %(options)s"
+msgstr "%(field)s debe ser una de estas opciones: %(options)s"
+
+#: services/fulfilment.py:85 services/resources.py:80
+#, python-format
+msgid "%(business)s businesses have no resource type '%(type)s'"
+msgstr "Los negocios de tipo %(business)s no tienen el tipo de recurso “%(type)s”"
+
+#: services/fulfilment.py:94
+#, python-format
+msgid "Ask for between 1 and %(n)s of each resource"
+msgstr "Pide entre 1 y %(n)s de cada recurso"
+
+#: services/fulfilment.py:98
+#, python-format
+msgid "Say which kind of %(resource)s it needs (for example: Kayak)"
+msgstr "Indica qué clase de %(resource)s necesita (por ejemplo: Kayak)"
+
+#: services/fulfilment.py:104
+msgid "Requirement filters must be attribute → value"
+msgstr "Los filtros de requisitos deben ser atributo → valor"
+
+#: services/fulfilment.py:208
+#, python-format
+msgid "Pick a %(what)s at this location"
+msgstr "Elige %(what)s en esta sede"
+
+#: services/fulfilment.py:210
+#, python-format
+msgid "Pick a %(what)s at this location (it needs %(n)s)"
+msgstr "Elige %(what)s en esta sede (necesita %(n)s)"
+
+#: services/fulfilment.py:214
+#, python-format
+msgid "No %(what)s is in service here. Add one in Resources"
+msgstr "No hay %(what)s en servicio aquí. Agrega uno en Recursos"
+
+#: services/fulfilment.py:235
+#, python-format
+msgid "%(name)s is busy %(when)s"
+msgstr "%(name)s está ocupado %(when)s"
+
+#: services/fulfilment.py:237
+#, python-format
+msgid "%(name)s is busy then"
+msgstr "%(name)s está ocupado a esa hora"
+
+#: services/fulfilment.py:250
+#, python-format
+msgid "No %(what)s free %(when)s (it needs %(n)s)"
+msgstr "No hay %(what)s libre %(when)s (necesita %(n)s)"
+
+#: services/fulfilment.py:250
+#, python-format
+msgid "No %(what)s free %(when)s"
+msgstr "No hay %(what)s libre %(when)s"
+
+#: services/fulfilment.py:251
+msgid "at that time"
+msgstr "a esa hora"
+
+#: services/parties.py:56
+#, python-format
+msgid "%(business)s businesses have no account type '%(type)s'"
+msgstr "Los negocios de tipo %(business)s no tienen el tipo de cuenta “%(type)s”"
+
+#: services/parties.py:144
+msgid "That account is outside your scope"
+msgstr "Esa cuenta está fuera de tu alcance"
+
+#: services/parties.py:156
+msgid "Enter the account's name"
+msgstr "Ingresa el nombre de la cuenta"
+
+#: services/parties.py:177
+#, python-format
+msgid "Say whose %(subject)s it is: one customer or one account"
+msgstr "Indica de quién es (%(subject)s): un cliente o una cuenta"
+
+#: services/parties.py:189
+#, python-format
+msgid "Name the %(subject)s"
+msgstr "Ponle nombre (%(subject)s)"
+
+#: services/parties.py:208
+msgid "subject"
+msgstr "sujeto"
+
+#: services/parties.py:211
+#, python-format
+msgid "Pick which of %(customer)s's %(subject)ss it is for"
+msgstr "Elige a qué %(subject)s de %(customer)s corresponde"
+
+#: services/parties.py:235
+msgid "Pick an active plan"
+msgstr "Elige un plan activo"
+
+#: services/parties.py:278
+msgid "That plan isn't active"
+msgstr "Ese plan no está activo"
+
+#: services/parties.py:301
+#, python-format
+msgid "%(customer)s's pack has no credits left"
+msgstr "Al paquete de %(customer)s no le quedan créditos"
+
+#: services/policies.py:33
+msgid "Booking"
+msgstr "Reservas"
+
+#: services/policies.py:34
+msgid "Payments"
+msgstr "Pagos"
+
+#: services/policies.py:35
+msgid "Reminders"
+msgstr "Recordatorios"
+
+#: services/policies.py:36
+msgid "Documents"
+msgstr "Documentos"
+
+#: services/policies.py:43
+msgid "Approve new bookings"
+msgstr "Aprobar reservas nuevas"
+
+#: services/policies.py:44
+msgid "New bookings start as requests until the desk confirms them."
+msgstr "Las reservas nuevas quedan como solicitudes hasta que recepción las confirme."
+
+#: services/policies.py:48
+msgid "Booking window"
+msgstr "Anticipación para reservar"
+
+#: services/policies.py:49
+msgid "days"
+msgstr "días"
+
+#: services/policies.py:50
+msgid "How far ahead customers can book."
+msgstr "Con cuánta anticipación pueden reservar los clientes."
+
+#: services/policies.py:53
+msgid "Free cancellation until"
+msgstr "Cancelación gratuita hasta"
+
+#: services/policies.py:54
+msgid "h before"
+msgstr "h antes"
+
+#: services/policies.py:55
+msgid "Later cancellations are charged the no-show fee."
+msgstr "A las cancelaciones posteriores se les cobra la tarifa por inasistencia."
+
+#: services/policies.py:58
+msgid "Check-in grace"
+msgstr "Tolerancia de llegada"
+
+#: services/policies.py:59
+msgid "min"
+msgstr "min"
+
+#: services/policies.py:60
+msgid "Minutes after start before a booking can be marked no-show."
+msgstr "Minutos tras el inicio antes de poder marcar una reserva como inasistencia."
+
+#: services/policies.py:64
+msgid "Deposit at booking"
+msgstr "Depósito al reservar"
+
+#: services/policies.py:66
+msgid "Share of the price collected when booking."
+msgstr "Parte del precio que se cobra al reservar."
+
+#: services/policies.py:69
+msgid "No-show fee"
+msgstr "Tarifa por inasistencia"
+
+#: services/policies.py:71
+msgid "Charged on no-shows and late cancellations."
+msgstr "Se cobra por inasistencias y cancelaciones tardías."
+
+#: services/policies.py:74
+msgid "Reminder timing"
+msgstr "Momento del recordatorio"
+
+#: services/policies.py:76
+msgid "When customers get their booking reminder."
+msgstr "Cuándo reciben los clientes el recordatorio de su reserva."
+
+#: services/policies.py:79
+msgid "SMS reminders"
+msgstr "Recordatorios por SMS"
+
+#: services/policies.py:80
+msgid "Send reminders by SMS as well as email."
+msgstr "Envía recordatorios por SMS además de por correo."
+
+#: services/policies.py:83
+msgid "Invoice prefix"
+msgstr "Prefijo de factura"
+
+#: services/policies.py:84
+msgid "Prepended to invoice numbers."
+msgstr "Se antepone a los números de factura."
+
+#: services/policies.py:106
+msgctxt "no-show fee"
+msgid "None"
+msgstr "Ninguna"
+
+#: services/policies.py:107
+msgctxt "no-show fee"
+msgid "25% of price"
+msgstr "25 % del precio"
+
+#: services/policies.py:108
+msgctxt "no-show fee"
+msgid "50% of price"
+msgstr "50 % del precio"
+
+#: services/policies.py:109
+msgctxt "no-show fee"
+msgid "Full price"
+msgstr "Precio completo"
+
+#: services/policies.py:110
+msgctxt "reminder timing"
+msgid "Off"
+msgstr "Desactivado"
+
+#: services/policies.py:111
+msgctxt "reminder timing"
+msgid "24h before"
+msgstr "24 h antes"
+
+#: services/policies.py:112
+msgctxt "reminder timing"
+msgid "2h before"
+msgstr "2 h antes"
+
+#: services/policies.py:113
+msgctxt "reminder timing"
+msgid "24h and 2h before"
+msgstr "24 h y 2 h antes"
+
+#: services/policies.py:114
+msgctxt "document requirement"
+msgid "Not needed"
+msgstr "No se requiere"
+
+#: services/policies.py:115
+msgctxt "document requirement"
+msgid "Remind"
+msgstr "Recordar"
+
+#: services/policies.py:116
+msgctxt "document requirement"
+msgid "Required to book"
+msgstr "Obligatorio para reservar"
+
+#: services/policies.py:127
+#, python-format
+msgid "Remind flags customers without a valid one; Required to book refuses the booking. Valid for %(n)s days."
+msgstr "Recordar marca a los clientes que no tienen uno vigente; Obligatorio para reservar rechaza la reserva. Válido por %(n)s días."
+
+#: services/policies.py:130
+msgid "Remind flags customers without a valid one; Required to book refuses the booking."
+msgstr "Recordar marca a los clientes que no tienen uno vigente; Obligatorio para reservar rechaza la reserva."
+
+#: services/policies.py:135
+#, python-format
+msgid "Require %(document)s"
+msgstr "Exigir %(document)s"
+
+#: services/policies.py:188
+#, python-format
+msgid "Default for %(business)s"
+msgstr "Predeterminado para %(business)s"
+
+#: services/policies.py:220
+#, python-format
+msgid "That isn't a valid value for “%(setting)s”"
+msgstr "Ese no es un valor válido para “%(setting)s”"
+
+#: services/policies.py:228
+msgid "Unknown policy"
+msgstr "Política desconocida"
+
+#: services/policies.py:232
+msgid "That place is outside your scope"
+msgstr "Ese lugar está fuera de tu alcance"
+
+#: services/resources.py:92
+#, python-format
+msgid "Enter the %(role)s (for example: %(example)s)"
+msgstr "Ingresa %(role)s (por ejemplo: %(example)s)"
+
+#: services/resources.py:93
+msgid "type"
+msgstr "tipo"
+
+#: services/resources.py:103
+msgid "It can only sit inside something at the same location"
+msgstr "Solo puede ubicarse dentro de algo en la misma sede"
+
+#: services/resources.py:125
+msgid "That resource is outside your scope"
+msgstr "Ese recurso está fuera de tu alcance"
+
+#: services/resources.py:128
+msgid "Unknown status"
+msgstr "Estado desconocido"
