@@ -1,0 +1,349 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-11 17:40+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+#: controllers/internal.py:26 controllers/internal.py:48
+msgid "Unknown tenant"
+msgstr "Negocio desconocido"
+
+#: services/accounts.py:72
+msgid "Enter your name"
+msgstr "Escribe tu nombre"
+
+#: services/accounts.py:75 services/team.py:90
+msgid "Enter a valid email address"
+msgstr "Escribe un correo electrónico válido"
+
+#: services/accounts.py:78
+#, python-format
+msgid "Use at least %(n)s characters for your password"
+msgstr "Usa al menos %(n)s caracteres para tu contraseña"
+
+#: services/accounts.py:81
+msgid "An account with this email already exists — sign in instead"
+msgstr "Ya existe una cuenta con este correo — mejor inicia sesión"
+
+#: services/accounts.py:92
+msgid "Email or password is incorrect"
+msgstr "El correo o la contraseña no son correctos"
+
+#: services/accounts.py:107
+msgid "Sign in to continue"
+msgstr "Inicia sesión para continuar"
+
+#: services/business.py:66
+msgid "No such business"
+msgstr "Ese negocio no existe"
+
+#: services/business.py:98 services/tenants.py:156
+msgid "Pick a currency"
+msgstr "Elige una moneda"
+
+#: services/business.py:104
+msgid "Tax is a percentage between 0 and 100"
+msgstr "El impuesto es un porcentaje entre 0 y 100"
+
+#: services/business.py:111
+msgid "Name the tax (VAT, GST, Sales tax)"
+msgstr "Ponle nombre al impuesto (IVA, IGV, impuesto de ventas)"
+
+#: services/business.py:124
+msgid "The logo must be an https:// address"
+msgstr "El logo debe ser una dirección https://"
+
+#: services/business.py:130
+#, python-format
+msgid "“%(domain)s” is not a domain name (use one like book.example.com)"
+msgstr ""
+"“%(domain)s” no es un nombre de dominio (usa uno como reservas.ejemplo.com)"
+
+#: services/business.py:133
+msgid "That domain is already used by another business"
+msgstr "Ese dominio ya lo usa otro negocio"
+
+#: services/business.py:145
+msgid "Pick SAML, OpenID Connect or none"
+msgstr "Elige SAML, OpenID Connect o ninguno"
+
+#: services/business.py:149
+msgid "The issuer must be an https:// address"
+msgstr "El emisor debe ser una dirección https://"
+
+#: services/business.py:150
+msgid "The metadata URL must be an https:// address"
+msgstr "La URL de metadatos debe ser una dirección https://"
+
+#: services/business.py:154
+msgid "SAML needs the identity provider's metadata URL"
+msgstr "SAML necesita la URL de metadatos del proveedor de identidad"
+
+#: services/business.py:157
+msgid "OpenID Connect needs the issuer and a client ID"
+msgstr "OpenID Connect necesita el emisor y un ID de cliente"
+
+#: services/roles.py:98
+msgid "Pick a role"
+msgstr "Elige un rol"
+
+#: services/roles.py:123
+#, python-format
+msgid "You can't grant %(role)s: it can do things your role can't"
+msgstr "No puedes otorgar %(role)s: puede hacer cosas que tu rol no puede"
+
+#: services/roles.py:130
+#, python-format
+msgid "Unknown permission: %(permission)s"
+msgstr "Permiso desconocido: %(permission)s"
+
+#: services/roles.py:139
+msgid "Name the role (2 to 60 characters)"
+msgstr "Ponle nombre al rol (de 2 a 60 caracteres)"
+
+#: services/roles.py:145
+#, python-format
+msgid "There's already a role called %(label)s"
+msgstr "Ya hay un rol llamado %(label)s"
+
+#: services/roles.py:164
+msgid "No such role"
+msgstr "Ese rol no existe"
+
+#: services/roles.py:167
+msgid "The owner role can't be changed"
+msgstr "El rol de propietario no se puede cambiar"
+
+#: services/roles.py:170
+msgid "You can't change the role you hold"
+msgstr "No puedes cambiar el rol que tienes"
+
+#: services/roles.py:243
+#, python-format
+msgid "%(n)s person holds %(role)s: give them another role first"
+msgid_plural "%(n)s people hold %(role)s: give them another role first"
+msgstr[0] "%(n)s persona tiene el rol %(role)s: primero asígnale otro rol"
+msgstr[1] "%(n)s personas tienen el rol %(role)s: primero asígnales otro rol"
+msgstr[2] "%(n)s personas tienen el rol %(role)s: primero asígnales otro rol"
+
+#: services/team.py:22
+msgid "Entire business"
+msgstr "Todo el negocio"
+
+#: services/team.py:62
+msgid "Only owners can make someone an owner"
+msgstr "Solo los propietarios pueden hacer propietario a alguien"
+
+#: services/team.py:94
+msgid "Pick a place inside your scope"
+msgstr "Elige un lugar dentro de tu alcance"
+
+#: services/team.py:97
+msgid "That person is already on the team"
+msgstr "Esa persona ya está en el equipo"
+
+#: services/team.py:118
+msgid "That person is outside your scope"
+msgstr "Esa persona está fuera de tu alcance"
+
+#: services/team.py:121
+msgid "You can't change your own role"
+msgstr "No puedes cambiar tu propio rol"
+
+#: services/team.py:125
+msgid "Only owners can change an owner's role"
+msgstr "Solo los propietarios pueden cambiar el rol de un propietario"
+
+#: services/tenants.py:56
+msgid "location"
+msgstr "ubicación"
+
+#: services/tenants.py:71
+msgid "Email & password"
+msgstr "Correo y contraseña"
+
+#: services/tenants.py:147
+msgid "Unknown business template"
+msgstr "Plantilla de negocio desconocida"
+
+#: services/tenants.py:150
+msgid "Enter the business name"
+msgstr "Escribe el nombre del negocio"
+
+#: services/tenants.py:153
+#, python-format
+msgid "Name your first %(location)s"
+msgstr "Escribe el nombre de tu %(location)s inicial"
+
+#: services/tenants.py:192
+msgid "Whole business"
+msgstr "Todo el negocio"
+
+#: services/tenants.py:214
+#, python-format
+msgid "No workspace “%(slug)s”"
+msgstr "No hay ningún espacio de trabajo “%(slug)s”"
+
+#: services/tenants.py:218
+#, python-format
+msgid "You are not a member of %(business)s"
+msgstr "No eres miembro de %(business)s"
+
+#: services/tenants.py:278
+msgid "Area"
+msgstr "Zona"
+
+#: services/tenants.py:278
+msgid "Areas"
+msgstr "Zonas"
+
+#: services/tenants.py:295
+#, python-format
+msgid "Nothing groups under %(place)s: add a %(location)s"
+msgstr "Bajo %(place)s ya no van más grupos: agrega ahí cada %(location)s"
+
+#: services/tenants.py:302
+#, python-format
+msgid "Pick one of the levels: %(levels)s"
+msgstr "Elige uno de los niveles: %(levels)s"
+
+#: services/tenants.py:306
+#, python-format
+msgid "%(levels)s go above %(place)s, not inside it"
+msgstr "%(levels)s van por encima de %(place)s, no dentro"
+
+#: services/tenants.py:329
+msgid "That place is outside your scope"
+msgstr "Ese lugar está fuera de tu alcance"
+
+#: services/tenants.py:344 services/tenants.py:417
+msgid "Enter a name"
+msgstr "Escribe un nombre"
+
+#: services/tenants.py:348
+msgid "Nothing goes inside a location: add it to the business or a group"
+msgstr "Dentro de una ubicación no va nada: agrégalo al negocio o a un grupo"
+
+#: services/tenants.py:386
+msgid "Only locations have a time zone and opening hours"
+msgstr "Solo las ubicaciones tienen zona horaria y horario de atención"
+
+#: services/tenants.py:392
+#, python-format
+msgid "“%(tz)s” is not a time zone (use a name like America/New_York)"
+msgstr ""
+"“%(tz)s” no es una zona horaria (usa un nombre como America/Mexico_City)"
+
+#: services/tenants.py:401
+msgid "Closing time must be after opening time"
+msgstr "La hora de cierre debe ser posterior a la de apertura"
+
+#: services/tenants.py:423
+msgid "Only locations can be paused"
+msgstr "Solo se pueden pausar las ubicaciones"
+
+#: types/roles.py:17
+msgid "Book, check in & cancel"
+msgstr "Reservar, registrar llegadas y cancelar"
+
+#: types/roles.py:18
+msgid "Collect & refund payments"
+msgstr "Cobrar y reembolsar pagos"
+
+#: types/roles.py:19
+msgid "Manage business"
+msgstr "Administrar el negocio"
+
+#: types/roles.py:20
+msgid "Invite team"
+msgstr "Invitar al equipo"
+
+#: types/roles.py:21
+msgid "Assign roles"
+msgstr "Asignar roles"
+
+#: types/roles.py:22
+msgid "Edit policies & resources"
+msgstr "Editar políticas y recursos"
+
+#: types/roles.py:23
+msgid "Edit catalog & prices"
+msgstr "Editar catálogo y precios"
+
+#: types/roles.py:24
+msgid "View Tenantly plan"
+msgstr "Ver el plan de Tenantly"
+
+#: types/roles.py:25
+msgid "Manage Tenantly plan"
+msgstr "Administrar el plan de Tenantly"
+
+#: types/roles.py:26
+msgid "View audit trail"
+msgstr "Ver el registro de auditoría"
+
+#: types/roles.py:28
+msgid "View insights"
+msgstr "Ver estadísticas"
+
+#: types/roles.py:34
+msgid "Owner"
+msgstr "Propietario"
+
+#: types/roles.py:35
+msgid "Full control of the business, including billing."
+msgstr "Control total del negocio, incluida la facturación."
+
+#: types/roles.py:40
+msgid "Admin"
+msgstr "Administrador"
+
+#: types/roles.py:41
+msgid "Runs day-to-day operations; cannot change the Tenantly plan."
+msgstr "Lleva la operación diaria; no puede cambiar el plan de Tenantly."
+
+#: types/roles.py:57
+msgid "Area manager"
+msgstr "Gerente de zona"
+
+#: types/roles.py:58
+msgid "Runs bookings, catalog and policies for one area."
+msgstr "Lleva las reservas, el catálogo y las políticas de una zona."
+
+#: types/roles.py:71
+msgid "Front desk lead"
+msgstr "Jefe de recepción"
+
+#: types/roles.py:72
+msgid "Runs the desk of a single site: bookings, check-ins, payments."
+msgstr "Lleva la recepción de una sede: reservas, llegadas y pagos."
+
+#: types/roles.py:77
+msgid "Analyst"
+msgstr "Analista"
+
+#: types/roles.py:78
+msgid "Read-only access to bookings, numbers and settings."
+msgstr "Acceso de solo lectura a reservas, cifras y configuración."
+
+#: types/roles.py:83
+msgid "Auditor"
+msgstr "Auditor"
+
+#: types/roles.py:84
+msgid "Read-only access to the audit trail and billing."
+msgstr "Acceso de solo lectura al registro de auditoría y la facturación."
