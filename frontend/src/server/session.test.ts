@@ -55,8 +55,8 @@ describe('session helper (real request/response cycle)', () => {
   it('login sets a signed, attribute-correct session cookie on the outgoing response', async () => {
     const { setSession } = await loadSession('secret-one');
     const { response } = await runRequest(
-      new Request('http://localhost/login'),
-      () => setSession({ userId: 'user_1' }),
+      new Request('https://app.example/login'),
+      () => setSession({ token: 'tok_1' }),
     );
     const [cookie] = response.headers.getSetCookie();
     expect(cookie).toMatch(/^session=/);
@@ -69,10 +69,25 @@ describe('session helper (real request/response cycle)', () => {
     expect(cookie.split(';')[0]).toMatch(/^session=[^;]+\.[^;.]+$/);
   });
 
+  it('Secure follows the client-facing scheme, so plain-http LAN/IP access keeps its session', async () => {
+    const { setSession } = await loadSession('secret-one');
+    const cookieFor = async (request: Request) =>
+      (await runRequest(request, () => setSession({ token: 'tok_1' }))).response.headers.getSetCookie()[0];
+
+    expect(await cookieFor(new Request('http://192.168.0.2:3000/login'))).not.toContain('Secure');
+    // Behind the proxy the hop is http; the forwarded scheme decides.
+    expect(
+      await cookieFor(new Request('http://frontend:3000/login', { headers: { 'x-forwarded-proto': 'http' } })),
+    ).not.toContain('Secure');
+    expect(
+      await cookieFor(new Request('http://frontend:3000/login', { headers: { 'x-forwarded-proto': 'https' } })),
+    ).toContain('Secure');
+  });
+
   it('the next request carrying the cookie reads the session back', async () => {
     const session = await loadSession('secret-one');
     const login = await runRequest(new Request('http://localhost/login'), () =>
-      session.setSession({ userId: 'user_1' }),
+      session.setSession({ token: 'tok_1' }),
     );
     const { result } = await runRequest(
       new Request('http://localhost/me', {
@@ -80,13 +95,13 @@ describe('session helper (real request/response cycle)', () => {
       }),
       () => session.getSession(),
     );
-    expect(result).toEqual({ userId: 'user_1' });
+    expect(result).toEqual({ token: 'tok_1' });
   });
 
   it('no cookie, foreign cookies, or a tampered value all read as null', async () => {
     const session = await loadSession('secret-one');
     const login = await runRequest(new Request('http://localhost/login'), () =>
-      session.setSession({ userId: 'user_1' }),
+      session.setSession({ token: 'tok_1' }),
     );
     const pair = sessionPair(login.response);
     const tampered = pair.replace(
@@ -110,7 +125,7 @@ describe('session helper (real request/response cycle)', () => {
   it('expiry is enforced server-side even though the cookie is still presented', async () => {
     const session = await loadSession('secret-one');
     const login = await runRequest(new Request('http://localhost/login'), () =>
-      session.setSession({ userId: 'user_1' }),
+      session.setSession({ token: 'tok_1' }),
     );
     const pair = sessionPair(login.response);
 
@@ -127,7 +142,7 @@ describe('session helper (real request/response cycle)', () => {
   it("rotation: a cookie signed under the old secret verifies under 'new,old', not under 'new'", async () => {
     const oldDeploy = await loadSession('old-secret');
     const login = await runRequest(new Request('http://localhost/login'), () =>
-      oldDeploy.setSession({ userId: 'user_1' }),
+      oldDeploy.setSession({ token: 'tok_1' }),
     );
     const pair = sessionPair(login.response);
 
@@ -136,7 +151,7 @@ describe('session helper (real request/response cycle)', () => {
       new Request('http://localhost/me', { headers: { cookie: pair } }),
       () => rotated.getSession(),
     );
-    expect(kept.result).toEqual({ userId: 'user_1' });
+    expect(kept.result).toEqual({ token: 'tok_1' });
 
     const dropped = await loadSession('new-secret');
     const gone = await runRequest(
@@ -149,7 +164,7 @@ describe('session helper (real request/response cycle)', () => {
   it('fresh cookies are signed by the FIRST secret in the list', async () => {
     const rotated = await loadSession('new-secret,old-secret');
     const login = await runRequest(new Request('http://localhost/login'), () =>
-      rotated.setSession({ userId: 'user_2' }),
+      rotated.setSession({ token: 'tok_2' }),
     );
     const pair = sessionPair(login.response);
 
@@ -158,7 +173,7 @@ describe('session helper (real request/response cycle)', () => {
       new Request('http://localhost/me', { headers: { cookie: pair } }),
       () => newOnly.getSession(),
     );
-    expect(result).toEqual({ userId: 'user_2' });
+    expect(result).toEqual({ token: 'tok_2' });
   });
 
   it('clearSession expires the cookie on the outgoing response', async () => {

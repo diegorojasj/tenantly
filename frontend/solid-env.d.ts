@@ -21,6 +21,7 @@ declare module 'virtual:env/server' {
     : string;
   const env: {
     readonly "SESSION_SECRET": __Out<__Schema["server"]["SESSION_SECRET"]>;
+    readonly "API_URL": __Out<__Schema["server"]["API_URL"]>;
     readonly "VITE_APP_NAME": __Out<__Schema["client"]["VITE_APP_NAME"]>;
   };
   export { env };

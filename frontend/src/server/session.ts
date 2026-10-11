@@ -19,7 +19,8 @@ import { env } from 'virtual:env/server';
 
 /** Augment with whatever the app stores; keep it small (cookies cap at ~4KB). */
 export interface SessionData {
-  userId?: string;
+  /** The identity service session token (opaque; the service stores only its hash). */
+  token?: string;
 }
 
 const MAX_AGE = 60 * 60 * 24 * 7; // seconds — drives cookie Max-Age AND the enforced expiry
@@ -40,8 +41,10 @@ if (secrets.length === 0) {
 
 const cookie = createCookie('session', {
   secrets,
-  httpOnly: true, // explicit: @remix-run/cookie defaults httpOnly/secure to FALSE
-  secure: true,
+  httpOnly: true, // explicit: @remix-run/cookie defaults httpOnly to FALSE
+  // `secure` is decided per request (see isHttps): browsers silently drop a
+  // Secure cookie set over plain http on any host but localhost, so a fixed
+  // `secure: true` breaks sign-in at http://192.168.x.x or any LAN/public IP.
   sameSite: 'Lax',
   maxAge: MAX_AGE,
 });
@@ -54,6 +57,17 @@ function event(): RequestEvent & { response: ResponseStub } {
     );
   }
   return e as RequestEvent & { response: ResponseStub };
+}
+
+/**
+ * Whether the browser reached us over https. Behind the proxy (or any TLS
+ * terminator) the request arrives as http, so X-Forwarded-Proto wins; the
+ * first entry is the client-facing hop.
+ */
+function isHttps(request: Request): boolean {
+  const forwarded = request.headers.get('x-forwarded-proto');
+  if (forwarded) return forwarded.split(',')[0].trim().toLowerCase() === 'https';
+  return new URL(request.url).protocol === 'https:';
 }
 
 /**
@@ -79,16 +93,18 @@ export async function getSession(): Promise<SessionData | null> {
 /** Replaces the session (whole-payload write) on the outgoing response. */
 export async function setSession(data: SessionData): Promise<void> {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
-  event().response.headers.append(
+  const e = event();
+  e.response.headers.append(
     'set-cookie',
-    await cookie.serialize(JSON.stringify({ data, exp })),
+    await cookie.serialize(JSON.stringify({ data, exp }), { secure: isHttps(e.request) }),
   );
 }
 
 /** Expires the session cookie on the outgoing response. */
 export async function clearSession(): Promise<void> {
-  event().response.headers.append(
+  const e = event();
+  e.response.headers.append(
     'set-cookie',
-    await cookie.serialize('', { maxAge: 0 }),
+    await cookie.serialize('', { maxAge: 0, secure: isHttps(e.request) }),
   );
 }

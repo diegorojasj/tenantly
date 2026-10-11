@@ -15,8 +15,11 @@ export default {
     // Comma-separated, newest first — see src/server/session.ts for the
     // rotation story. Generate one: `openssl rand -base64 32`.
     SESSION_SECRET: v.pipe(v.string(), v.minLength(32)),
+    // Where the services live: the proxy's /api prefix. Server-side only —
+    // the browser never calls a service directly.
+    API_URL: v.optional(v.pipe(v.string(), v.url()), 'http://localhost:8080/api'),
   },
   client: {
-    VITE_APP_NAME: v.optional(v.pipe(v.string(), v.minLength(1)), 'Solid App'),
+    VITE_APP_NAME: v.optional(v.pipe(v.string(), v.minLength(1)), 'Tenantly'),
   },
 };
