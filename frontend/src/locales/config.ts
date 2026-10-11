@@ -1,0 +1,36 @@
+import { defineMessages } from './define';
+
+export default defineMessages(
+  {
+    pageTitle: 'Configuration · Tenantly',
+    eyebrow: 'Editing at {level} level',
+    title: 'Policies',
+    lede: 'Rules for bookings, payments and reminders. What you set here applies to {place} and everything inside it, unless a site sets its own.',
+    setLocally: 'set locally',
+    inherited: 'inherited',
+    toastReset: '{label}: back to the inherited value',
+    toastSaved: '{label} saved for {place}',
+    resetTitle: 'Remove this override and inherit from above',
+    resetLabel: 'Reset {label} to inherited value',
+    requires: 'Requires {guard}',
+    on: 'On',
+    off: 'Off',
+    cascadeLabel: 'Where this value comes from',
+  },
+  {
+    pageTitle: 'Configuración · Tenantly',
+    eyebrow: 'Editando a nivel de {level}',
+    title: 'Políticas',
+    lede: 'Reglas para reservas, pagos y recordatorios. Lo que definas aquí aplica a {place} y a todo lo que contiene, salvo que un sitio defina lo suyo.',
+    setLocally: 'definidas aquí',
+    inherited: 'heredadas',
+    toastReset: '{label}: vuelve al valor heredado',
+    toastSaved: '{label} guardado para {place}',
+    resetTitle: 'Quita este ajuste propio y hereda el de arriba',
+    resetLabel: 'Restablecer {label} al valor heredado',
+    requires: 'Requiere {guard}',
+    on: 'Sí',
+    off: 'No',
+    cascadeLabel: 'De dónde viene este valor',
+  },
+);

@@ -1,0 +1,66 @@
+import { defineMessages } from './define';
+
+export default defineMessages(
+  {
+    pageTitle: 'Resources · Tenantly',
+    title: 'Resources',
+    lede: 'Who and what delivers the work, and how much of their open time was booked this week.',
+    addThing: 'Add {what}',
+    close: 'Close',
+    toastBack: '{name} is back in service',
+    toastOut: "{name} taken out of service — it won't be offered for new bookings",
+    toastAdded: '{name} added',
+
+    // Table
+    avgUtilization: '{pct}% average utilization',
+    name: 'Name',
+    typeFallback: 'Type',
+    details: 'Details',
+    utilization: 'Utilization (7 days)',
+    nextBooked: 'Next booked',
+    empty: 'Nothing here yet.',
+    outOfService: 'out of service',
+    inside: 'in {name}',
+    backInService: 'Back in service',
+    takeOut: 'Take out of service',
+    takeOutConfirm: 'Stop booking it?',
+
+    // Add resource
+    rolePlaceholderPeople: 'e.g. Yoga',
+    rolePlaceholderThings: 'e.g. Kayak, Room, Van',
+    roleHint: 'Offerings that need a {noun} of this {role} can book it.',
+    insideLabel: 'Inside (optional)',
+    nothingOption: '— Nothing —',
+    insideHint: 'Booking either one blocks the other (a whole property and its units).',
+  },
+  {
+    pageTitle: 'Recursos · Tenantly',
+    title: 'Recursos',
+    lede: 'Quién y qué realiza el trabajo, y cuánto de su tiempo disponible se reservó esta semana.',
+    addThing: 'Agregar {what}',
+    close: 'Cerrar',
+    toastBack: '{name} vuelve a estar en servicio',
+    toastOut: '{name} fuera de servicio — no se ofrecerá para nuevas reservas',
+    toastAdded: 'Se agregó {name}',
+
+    avgUtilization: '{pct}% de uso promedio',
+    name: 'Nombre',
+    typeFallback: 'Tipo',
+    details: 'Detalles',
+    utilization: 'Uso (7 días)',
+    nextBooked: 'Próxima reserva',
+    empty: 'Todavía no hay nada aquí.',
+    outOfService: 'fuera de servicio',
+    inside: 'en {name}',
+    backInService: 'Volver a poner en servicio',
+    takeOut: 'Poner fuera de servicio',
+    takeOutConfirm: '¿Dejar de reservarlo?',
+
+    rolePlaceholderPeople: 'p. ej. Yoga',
+    rolePlaceholderThings: 'p. ej. Kayak, Sala, Furgoneta',
+    roleHint: 'Las ofertas que necesiten {noun} de este {role} pueden reservarlo.',
+    insideLabel: 'Dentro de (opcional)',
+    nothingOption: '— Ninguno —',
+    insideHint: 'Reservar uno bloquea el otro (una propiedad completa y sus unidades).',
+  },
+);
