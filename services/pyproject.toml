@@ -19,11 +19,29 @@
 # ============================================================================
 
 [project]
-name = "backend"
+name = "tenantly-services"
 version = "1.0.0"
-description = "AgriLynx Pro - Agricultural Inventory Management Backend"
+description = "Tenantly - multi-tenant service-business platform: identity, operations and billing services"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+    "django>=5.2,<6",
+    "django-ninja>=1.4",
+    "psycopg[binary]>=3.2",
+    "pyjwt>=2.10",
+    "httpx>=0.28",
+    "gunicorn>=23",
+    # IANA zones for zoneinfo where the image has no system tz database (slim images).
+    "tzdata>=2024.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-django>=4.9",
+    "pytest-cov>=6",
+    "ruff>=0.8",
+]
 
 # ============================================================================
 # Ruff Configuration
@@ -152,6 +170,13 @@ max-statements = 50       # Maximum statements in function body
 # Django's Meta lists (constraints, indexes) are class attributes by design.
 "**/models/*.py" = ["RUF012"]
 "common/sync/models.py" = ["RUF012"]
+# Ninja reads request/response schema annotations at runtime, so they can't
+# move into TYPE_CHECKING blocks.
+"**/controllers/*.py" = ["TC001", "TC002", "TC003"]
+"**/schemas/*.py" = ["TC001", "TC002", "TC003"]
+"**/schemas/__init__.py" = ["TC001", "TC002", "TC003"]
+# Django's generated entry points.
+"**/manage.py" = ["PLC0415"]
 
 [tool.ruff.format]
 # Use double quotes
