@@ -10,52 +10,216 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UsersRouteImport } from './routes/users'
-import { Route as UsersIdRouteImport } from './routes/users.$id'
+import { Route as TOrgRouteImport } from './routes/t.$org'
+import { Route as TOrgIndexRouteImport } from './routes/t.$org.index'
+import { Route as TOrgAccessRouteImport } from './routes/t.$org.access'
+import { Route as TOrgAuditRouteImport } from './routes/t.$org.audit'
+import { Route as TOrgBillingRouteImport } from './routes/t.$org.billing'
+import { Route as TOrgBookingsRouteImport } from './routes/t.$org.bookings'
+import { Route as TOrgCalendarRouteImport } from './routes/t.$org.calendar'
+import { Route as TOrgCatalogRouteImport } from './routes/t.$org.catalog'
+import { Route as TOrgConfigRouteImport } from './routes/t.$org.config'
+import { Route as TOrgCustomersRouteImport } from './routes/t.$org.customers'
+import { Route as TOrgInsightsRouteImport } from './routes/t.$org.insights'
+import { Route as TOrgPaymentsRouteImport } from './routes/t.$org.payments'
+import { Route as TOrgResourcesRouteImport } from './routes/t.$org.resources'
+import { Route as TOrgSettingsRouteImport } from './routes/t.$org.settings'
+import { Route as TOrgStructureRouteImport } from './routes/t.$org.structure'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersRoute = UsersRouteImport.update({
-  id: '/users',
-  path: '/users',
+const TOrgRoute = TOrgRouteImport.update({
+  id: '/t/$org',
+  path: '/t/$org',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersIdRoute = UsersIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => UsersRoute,
+const TOrgIndexRoute = TOrgIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgAccessRoute = TOrgAccessRouteImport.update({
+  id: '/access',
+  path: '/access',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgAuditRoute = TOrgAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgBillingRoute = TOrgBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgBookingsRoute = TOrgBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgCalendarRoute = TOrgCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgCatalogRoute = TOrgCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgConfigRoute = TOrgConfigRouteImport.update({
+  id: '/config',
+  path: '/config',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgCustomersRoute = TOrgCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgInsightsRoute = TOrgInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgPaymentsRoute = TOrgPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgResourcesRoute = TOrgResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgSettingsRoute = TOrgSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => TOrgRoute,
+} as any)
+const TOrgStructureRoute = TOrgStructureRouteImport.update({
+  id: '/structure',
+  path: '/structure',
+  getParentRoute: () => TOrgRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/users': typeof UsersRouteWithChildren
-  '/users/$id': typeof UsersIdRoute
+  '/t/$org': typeof TOrgRouteWithChildren
+  '/t/$org/access': typeof TOrgAccessRoute
+  '/t/$org/audit': typeof TOrgAuditRoute
+  '/t/$org/billing': typeof TOrgBillingRoute
+  '/t/$org/bookings': typeof TOrgBookingsRoute
+  '/t/$org/calendar': typeof TOrgCalendarRoute
+  '/t/$org/catalog': typeof TOrgCatalogRoute
+  '/t/$org/config': typeof TOrgConfigRoute
+  '/t/$org/customers': typeof TOrgCustomersRoute
+  '/t/$org/insights': typeof TOrgInsightsRoute
+  '/t/$org/payments': typeof TOrgPaymentsRoute
+  '/t/$org/resources': typeof TOrgResourcesRoute
+  '/t/$org/settings': typeof TOrgSettingsRoute
+  '/t/$org/structure': typeof TOrgStructureRoute
+  '/t/$org/': typeof TOrgIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/users': typeof UsersRouteWithChildren
-  '/users/$id': typeof UsersIdRoute
+  '/t/$org/access': typeof TOrgAccessRoute
+  '/t/$org/audit': typeof TOrgAuditRoute
+  '/t/$org/billing': typeof TOrgBillingRoute
+  '/t/$org/bookings': typeof TOrgBookingsRoute
+  '/t/$org/calendar': typeof TOrgCalendarRoute
+  '/t/$org/catalog': typeof TOrgCatalogRoute
+  '/t/$org/config': typeof TOrgConfigRoute
+  '/t/$org/customers': typeof TOrgCustomersRoute
+  '/t/$org/insights': typeof TOrgInsightsRoute
+  '/t/$org/payments': typeof TOrgPaymentsRoute
+  '/t/$org/resources': typeof TOrgResourcesRoute
+  '/t/$org/settings': typeof TOrgSettingsRoute
+  '/t/$org/structure': typeof TOrgStructureRoute
+  '/t/$org': typeof TOrgIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/users': typeof UsersRouteWithChildren
-  '/users/$id': typeof UsersIdRoute
+  '/t/$org': typeof TOrgRouteWithChildren
+  '/t/$org/access': typeof TOrgAccessRoute
+  '/t/$org/audit': typeof TOrgAuditRoute
+  '/t/$org/billing': typeof TOrgBillingRoute
+  '/t/$org/bookings': typeof TOrgBookingsRoute
+  '/t/$org/calendar': typeof TOrgCalendarRoute
+  '/t/$org/catalog': typeof TOrgCatalogRoute
+  '/t/$org/config': typeof TOrgConfigRoute
+  '/t/$org/customers': typeof TOrgCustomersRoute
+  '/t/$org/insights': typeof TOrgInsightsRoute
+  '/t/$org/payments': typeof TOrgPaymentsRoute
+  '/t/$org/resources': typeof TOrgResourcesRoute
+  '/t/$org/settings': typeof TOrgSettingsRoute
+  '/t/$org/structure': typeof TOrgStructureRoute
+  '/t/$org/': typeof TOrgIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/users' | '/users/$id'
+  fullPaths:
+    | '/'
+    | '/t/$org'
+    | '/t/$org/access'
+    | '/t/$org/audit'
+    | '/t/$org/billing'
+    | '/t/$org/bookings'
+    | '/t/$org/calendar'
+    | '/t/$org/catalog'
+    | '/t/$org/config'
+    | '/t/$org/customers'
+    | '/t/$org/insights'
+    | '/t/$org/payments'
+    | '/t/$org/resources'
+    | '/t/$org/settings'
+    | '/t/$org/structure'
+    | '/t/$org/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/users' | '/users/$id'
-  id: '__root__' | '/' | '/users' | '/users/$id'
+  to:
+    | '/'
+    | '/t/$org/access'
+    | '/t/$org/audit'
+    | '/t/$org/billing'
+    | '/t/$org/bookings'
+    | '/t/$org/calendar'
+    | '/t/$org/catalog'
+    | '/t/$org/config'
+    | '/t/$org/customers'
+    | '/t/$org/insights'
+    | '/t/$org/payments'
+    | '/t/$org/resources'
+    | '/t/$org/settings'
+    | '/t/$org/structure'
+    | '/t/$org'
+  id:
+    | '__root__'
+    | '/'
+    | '/t/$org'
+    | '/t/$org/access'
+    | '/t/$org/audit'
+    | '/t/$org/billing'
+    | '/t/$org/bookings'
+    | '/t/$org/calendar'
+    | '/t/$org/catalog'
+    | '/t/$org/config'
+    | '/t/$org/customers'
+    | '/t/$org/insights'
+    | '/t/$org/payments'
+    | '/t/$org/resources'
+    | '/t/$org/settings'
+    | '/t/$org/structure'
+    | '/t/$org/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  UsersRoute: typeof UsersRouteWithChildren
+  TOrgRoute: typeof TOrgRouteWithChildren
 }
 
 declare module '@tanstack/solid-router' {
@@ -67,36 +231,153 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof UsersRouteImport
+    '/t/$org': {
+      id: '/t/$org'
+      path: '/t/$org'
+      fullPath: '/t/$org'
+      preLoaderRoute: typeof TOrgRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/$id': {
-      id: '/users/$id'
-      path: '/$id'
-      fullPath: '/users/$id'
-      preLoaderRoute: typeof UsersIdRouteImport
-      parentRoute: typeof UsersRoute
+    '/t/$org/': {
+      id: '/t/$org/'
+      path: '/'
+      fullPath: '/t/$org/'
+      preLoaderRoute: typeof TOrgIndexRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/access': {
+      id: '/t/$org/access'
+      path: '/access'
+      fullPath: '/t/$org/access'
+      preLoaderRoute: typeof TOrgAccessRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/audit': {
+      id: '/t/$org/audit'
+      path: '/audit'
+      fullPath: '/t/$org/audit'
+      preLoaderRoute: typeof TOrgAuditRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/billing': {
+      id: '/t/$org/billing'
+      path: '/billing'
+      fullPath: '/t/$org/billing'
+      preLoaderRoute: typeof TOrgBillingRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/bookings': {
+      id: '/t/$org/bookings'
+      path: '/bookings'
+      fullPath: '/t/$org/bookings'
+      preLoaderRoute: typeof TOrgBookingsRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/calendar': {
+      id: '/t/$org/calendar'
+      path: '/calendar'
+      fullPath: '/t/$org/calendar'
+      preLoaderRoute: typeof TOrgCalendarRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/catalog': {
+      id: '/t/$org/catalog'
+      path: '/catalog'
+      fullPath: '/t/$org/catalog'
+      preLoaderRoute: typeof TOrgCatalogRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/config': {
+      id: '/t/$org/config'
+      path: '/config'
+      fullPath: '/t/$org/config'
+      preLoaderRoute: typeof TOrgConfigRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/customers': {
+      id: '/t/$org/customers'
+      path: '/customers'
+      fullPath: '/t/$org/customers'
+      preLoaderRoute: typeof TOrgCustomersRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/insights': {
+      id: '/t/$org/insights'
+      path: '/insights'
+      fullPath: '/t/$org/insights'
+      preLoaderRoute: typeof TOrgInsightsRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/payments': {
+      id: '/t/$org/payments'
+      path: '/payments'
+      fullPath: '/t/$org/payments'
+      preLoaderRoute: typeof TOrgPaymentsRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/resources': {
+      id: '/t/$org/resources'
+      path: '/resources'
+      fullPath: '/t/$org/resources'
+      preLoaderRoute: typeof TOrgResourcesRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/settings': {
+      id: '/t/$org/settings'
+      path: '/settings'
+      fullPath: '/t/$org/settings'
+      preLoaderRoute: typeof TOrgSettingsRouteImport
+      parentRoute: typeof TOrgRoute
+    }
+    '/t/$org/structure': {
+      id: '/t/$org/structure'
+      path: '/structure'
+      fullPath: '/t/$org/structure'
+      preLoaderRoute: typeof TOrgStructureRouteImport
+      parentRoute: typeof TOrgRoute
     }
   }
 }
 
-interface UsersRouteChildren {
-  UsersIdRoute: typeof UsersIdRoute
+interface TOrgRouteChildren {
+  TOrgAccessRoute: typeof TOrgAccessRoute
+  TOrgAuditRoute: typeof TOrgAuditRoute
+  TOrgBillingRoute: typeof TOrgBillingRoute
+  TOrgBookingsRoute: typeof TOrgBookingsRoute
+  TOrgCalendarRoute: typeof TOrgCalendarRoute
+  TOrgCatalogRoute: typeof TOrgCatalogRoute
+  TOrgConfigRoute: typeof TOrgConfigRoute
+  TOrgCustomersRoute: typeof TOrgCustomersRoute
+  TOrgInsightsRoute: typeof TOrgInsightsRoute
+  TOrgPaymentsRoute: typeof TOrgPaymentsRoute
+  TOrgResourcesRoute: typeof TOrgResourcesRoute
+  TOrgSettingsRoute: typeof TOrgSettingsRoute
+  TOrgStructureRoute: typeof TOrgStructureRoute
+  TOrgIndexRoute: typeof TOrgIndexRoute
 }
 
-const UsersRouteChildren: UsersRouteChildren = {
-  UsersIdRoute: UsersIdRoute,
+const TOrgRouteChildren: TOrgRouteChildren = {
+  TOrgAccessRoute: TOrgAccessRoute,
+  TOrgAuditRoute: TOrgAuditRoute,
+  TOrgBillingRoute: TOrgBillingRoute,
+  TOrgBookingsRoute: TOrgBookingsRoute,
+  TOrgCalendarRoute: TOrgCalendarRoute,
+  TOrgCatalogRoute: TOrgCatalogRoute,
+  TOrgConfigRoute: TOrgConfigRoute,
+  TOrgCustomersRoute: TOrgCustomersRoute,
+  TOrgInsightsRoute: TOrgInsightsRoute,
+  TOrgPaymentsRoute: TOrgPaymentsRoute,
+  TOrgResourcesRoute: TOrgResourcesRoute,
+  TOrgSettingsRoute: TOrgSettingsRoute,
+  TOrgStructureRoute: TOrgStructureRoute,
+  TOrgIndexRoute: TOrgIndexRoute,
 }
 
-const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
+const TOrgRouteWithChildren = TOrgRoute._addFileChildren(TOrgRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  UsersRoute: UsersRouteWithChildren,
+  TOrgRoute: TOrgRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
