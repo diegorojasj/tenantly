@@ -7,26 +7,118 @@ import type { FetchQueryOptions } from '@tanstack/solid-query';
 import { QueryClient, queryOptions } from '@tanstack/solid-query';
 
 import { flightGateSkips, serverQueryFn } from './flight';
-import { getCurrentUser, getUser, getUsers } from './users';
+import { getCurrentUser, getWorkspaces } from './auth';
+import {
+  getAudit,
+  getBilling,
+  getConfig,
+  getMembers,
+  getRoles,
+  getSettings,
+  getTenantContext,
+} from './tenancy';
+import {
+  getAccounts,
+  getAvailability,
+  getBookingOptions,
+  getBookings,
+  getCalendar,
+  getCatalog,
+  getCustomer,
+  getCustomers,
+  getInsights,
+  getInvoices,
+  getPayments,
+  getResources,
+  getToday,
+} from './ops';
+import { isRefusal } from './refusal';
+import type { BookingRange } from './types';
 
-export const usersQuery = () =>
-  queryOptions({ queryKey: ['users'], queryFn: () => getUsers() });
+// Tenant reads are keyed `[resource, org, scope]`: the first segment is what
+// mutations name in `reload({ revalidate })`, and the org segment keeps every
+// tenant's data in its own cache slot — switching workspaces can never show
+// a neighbour's rows, even for a frame.
 
-export const userQuery = (id: string) =>
-  queryOptions({ queryKey: ['users', id], queryFn: () => getUser(id) });
-
-// The session read is component-owned: no route prefetches it, because it
-// is shell state every page shows rather than any page's data. That puts
-// it outside every loader — so this one query declares its fetch as a
-// recipe (`serverQueryFn`, src/lib/flight.ts): when a mutation names its
-// key (`reload({ revalidate: 'current-user' })`), the server re-executes
-// the call and ships the fresh session on the mutation's own response.
-// Loader-owned queries like the two above never need this — plain queryFn.
+// Session-shaped reads are component-owned (shell state, not page data), so
+// they declare their fetch as a recipe (`serverQueryFn`, src/lib/flight.ts):
+// when sign-in/out names their keys, the server re-executes them and ships
+// the fresh values on the mutation's own response.
 export const currentUserQuery = () =>
+  queryOptions({ queryKey: ['current-user'], ...serverQueryFn(getCurrentUser) });
+
+export const workspacesQuery = () =>
+  queryOptions({ queryKey: ['workspaces'], ...serverQueryFn(getWorkspaces) });
+
+export const tenantQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['tenant', org, scope], queryFn: () => getTenantContext(org, scope) });
+
+export const todayQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['today', org, scope], queryFn: () => getToday(org, scope) });
+
+export const calendarQuery = (org: string, scope = '', day = '') =>
+  queryOptions({ queryKey: ['calendar', org, scope, day], queryFn: () => getCalendar(org, scope, day) });
+
+export const bookingsQuery = (org: string, scope: string, range: BookingRange) =>
+  queryOptions({ queryKey: ['bookings', org, scope, range], queryFn: () => getBookings(org, scope, range) });
+
+export const bookingOptionsQuery = (org: string, locationId: string) =>
   queryOptions({
-    queryKey: ['current-user'],
-    ...serverQueryFn(getCurrentUser),
+    queryKey: ['booking-options', org, locationId],
+    queryFn: () => getBookingOptions(org, locationId),
+    // Always fresh when the drawer opens (it isn't swept by mutations).
+    staleTime: 0,
   });
+
+/** `picks`: the chosen resource ids, comma-separated. */
+export const availabilityQuery = (org: string, site: string, offering: string, picks: string, day: string, minutes: number, units = 1) =>
+  queryOptions({
+    queryKey: ['availability', org, site, offering, picks, day, minutes, units],
+    queryFn: () => getAvailability(org, site, offering, picks, day, minutes, units),
+    staleTime: 0,
+  });
+
+export const customersQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['customers', org, scope], queryFn: () => getCustomers(org, scope) });
+
+export const customerQuery = (org: string, id: string) =>
+  queryOptions({ queryKey: ['customer', org, id], queryFn: () => getCustomer(org, id) });
+
+export const accountsQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['accounts', org, scope], queryFn: () => getAccounts(org, scope) });
+
+export const catalogQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['catalog', org, scope], queryFn: () => getCatalog(org, scope) });
+
+export const resourcesQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['resources', org, scope], queryFn: () => getResources(org, scope) });
+
+export const paymentsQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['payments', org, scope], queryFn: () => getPayments(org, scope) });
+
+export const invoicesQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['invoices', org, scope], queryFn: () => getInvoices(org, scope) });
+
+export const insightsQuery = (org: string, scope: string, days: number) =>
+  queryOptions({ queryKey: ['insights', org, scope, days], queryFn: () => getInsights(org, scope, days) });
+
+export const membersQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['members', org, scope], queryFn: () => getMembers(org, scope) });
+
+export const rolesQuery = (org: string) =>
+  queryOptions({ queryKey: ['roles', org], queryFn: () => getRoles(org) });
+
+export const settingsQuery = (org: string) =>
+  queryOptions({ queryKey: ['settings', org], queryFn: () => getSettings(org) });
+
+export const configQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['config', org, scope], queryFn: () => getConfig(org, scope) });
+
+export const auditQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['audit', org, scope], queryFn: () => getAudit(org, scope) });
+
+export const billingQuery = (org: string) =>
+  queryOptions({ queryKey: ['billing', org], queryFn: () => getBilling(org) });
 
 // One factory for every side that needs a cache: the client boot
 // (src/App.tsx, one for the session), the per-request SSR setup
@@ -39,6 +131,8 @@ export function createQueryClient() {
         // fresh — without this, every observer would kick off a refetch the
         // moment it mounts, defeating both SSR hydration and single-flight.
         staleTime: 30_000,
+        // Access errors are answers, not blips: don't hammer the boundary.
+        retry: (count, error) => !isRefusal(error) && count < 2,
       },
     },
   });
