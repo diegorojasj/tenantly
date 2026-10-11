@@ -1,0 +1,60 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-11 17:39+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+#: api.py:27 auth.py:225
+msgid "Sign in to continue"
+msgstr "Inicia sesión para continuar"
+
+#: api.py:33
+msgid "invalid value"
+msgstr "valor no válido"
+
+#: auth.py:94
+#, python-format
+msgid "Your role can't do this (%(permission)s)"
+msgstr "Tu rol no puede hacer esto (%(permission)s)"
+
+#: auth.py:99
+msgid "Your role doesn't use this page"
+msgstr "Tu rol no usa esta página"
+
+#: auth.py:137
+msgid "Pick a location inside your scope"
+msgstr "Elige una ubicación dentro de tu alcance"
+
+#: auth.py:198
+msgid "Your session expired — sign in again"
+msgstr "Tu sesión expiró — vuelve a iniciar sesión"
+
+#: internal.py:74
+#, python-format
+msgid "The %(service)s service is unavailable — try again in a moment"
+msgstr ""
+"El servicio de %(service)s no está disponible — inténtalo de nuevo en un "
+"momento"
+
+#: internal.py:82
+#, python-format
+msgid "The %(service)s service sent an unreadable answer"
+msgstr "El servicio de %(service)s envió una respuesta ilegible"
+
+#: internal.py:85
+msgid "Request failed"
+msgstr "La solicitud falló"
