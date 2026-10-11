@@ -1,0 +1,51 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-11 17:39+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+#: services/charges.py:149
+msgid "That charge is outside your scope"
+msgstr "Ese cargo está fuera de tu alcance"
+
+#: services/charges.py:153
+msgid "Only open charges can be collected"
+msgstr "Solo se pueden cobrar los cargos abiertos"
+
+#: services/charges.py:156
+msgid "That charge is on an open invoice: collect the invoice instead"
+msgstr "Ese cargo está en una factura abierta: cobra la factura"
+
+#: services/charges.py:162
+msgid "Only paid charges can be refunded"
+msgstr "Solo se pueden reembolsar los cargos pagados"
+
+#: services/invoices.py:68
+msgid "That invoice is outside your scope"
+msgstr "Esa factura está fuera de tu alcance"
+
+#: services/invoices.py:119
+msgid "Nothing open to invoice for that customer"
+msgstr "No hay nada abierto que facturar a ese cliente"
+
+#: services/invoices.py:147
+msgid "Only open invoices can be paid"
+msgstr "Solo se pueden pagar las facturas abiertas"
+
+#: services/invoices.py:162
+msgid "Only open invoices can be voided"
+msgstr "Solo se pueden anular las facturas abiertas"
