@@ -57,3 +57,6 @@ Thumbs.db
 # Python test coverage
 htmlcov/
 .coverage
+
+# local service databases
+db.sqlite3
