@@ -21,7 +21,6 @@ export function createAppRouter(queryClient: QueryClient, history?: RouterHistor
     context: { queryClient },
     // Hovering (or touching) a <Link> runs the target route's loader early.
     defaultPreload: 'intent',
-    defaultPendingComponent: () => <main>Loading…</main>,
     // A semantic choice, not a hydration workaround: without the router's
     // global catch boundary, errors — including redirect() thrown during
     // SSR — bubble past the router to this app's own boundaries and stream

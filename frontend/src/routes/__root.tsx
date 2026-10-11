@@ -1,38 +1,28 @@
-import {
-  HeadContent,
-  Link,
-  Outlet,
-  createRootRouteWithContext,
-} from '@tanstack/solid-router';
+import { HeadContent, Outlet, createRootRouteWithContext } from '@tanstack/solid-router';
 
+import { t } from '../lib/i18n';
 import type { RouterContext } from '../router';
 
-// The root route: the site-wide layout every route renders inside, plus the
-// not-found boundary. Declaring the RouterContext type here is what types
-// `context` in every loader below. <HeadContent /> renders whatever the
-// matched routes declare in their `head` options (titles here).
+// The root route: renders the matched routes' head tags and nothing else —
+// the gateway (/) and the workspace shell (/t/$org) own their own chrome.
 export const Route = createRootRouteWithContext<RouterContext>()({
-  head: () => ({ meta: [{ title: 'Solid App' }] }),
+  head: () => ({ meta: [{ title: 'Tenantly' }] }),
   component: () => (
     <>
       <HeadContent />
-      <nav class="site-nav">
-        <Link to="/">Home</Link>
-        <Link to="/users">Users</Link>
-      </nav>
       <Outlet />
     </>
   ),
   notFoundComponent: () => (
-    <main>
-      <h1>Page Not Found</h1>
-      <p>
-        Visit{' '}
-        <a href="https://docs.solidjs.com" target="_blank" rel="noreferrer">
-          docs.solidjs.com
-        </a>{' '}
-        to learn how to build Solid apps.
-      </p>
+    <main class="gateway">
+      <div class="gateway-card narrow">
+        <p class="eyebrow">404</p>
+        <h1>{t('gateway.notFoundTitle')}</h1>
+        <p class="lede">{t('gateway.notFoundLede')}</p>
+        <a class="btn" href="/">
+          {t('gateway.backToWorkspaces')}
+        </a>
+      </div>
     </main>
   ),
 });
