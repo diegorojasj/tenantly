@@ -1,3 +1,6 @@
 # Tenantly
 ## Description
 An enterprise-grade multi-tenant SaaS platform serving multiple organizations, and multiple business units within each, from a single deployment. Tenants are logically isolated through tenant-scoped data access and row-level security, with hierarchical structures (organization → region → location) supporting role-based access control, SSO, audit logging, and per-tenant configuration of workflows, fields, pricing rules, and integrations without custom code. Shared services for authentication, billing, notifications, and analytics are centralized, enabling horizontal scaling, uniform security patching, and predictable operating costs as tenant count grows
+
+## Status
+Built today: identity (accounts, tenants with currency/tax and branding settings, a location tree of template-named levels at any depth, per-tenant custom roles, audit), operations (catalog, resources, customers, bookings, policies) and billing (charges, customer invoices with tax, Tenantly plan pricing), with decimal amounts end to end. SSO can be configured but isn't connected; notifications and a separate analytics service are planned, not built. See `docs/` — PRODUCT, ARCHITECTURE, USAGE and PLATFORM (the roadmap to a generic core + modules + templates).
