@@ -1,3 +1,143 @@
+# Tenantly stack.
+#   podman compose --profile DEV up      # services + proxy + frontend with hot reload
+#   podman compose --profile PROD up     # services + proxy + built frontend
+# Everything is reached through the proxy on http://localhost:8080.
+
+x-service: &service
+  build:
+    context: ./services
+    dockerfile: ../containers/containerfiles/service.containerfile
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  environment: &service-env
+    JWT_SECRET: ${JWT_SECRET}
+    INTERNAL_TOKEN: ${INTERNAL_TOKEN}
+    IDENTITY_URL: http://identity:8000
+    OPERATIONS_URL: http://operations:8000
+    BILLING_URL: http://billing:8000
+    ALLOWED_HOSTS: "*"
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+    interval: 10s
+    timeout: 3s
+    retries: 10
+
+x-frontend-env: &frontend-env
+  SESSION_SECRET: ${SESSION_SECRET}
+  # The frontend's server functions reach every service through the proxy.
+  API_URL: http://proxy:8080/api
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tenantly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./containers/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tenantly}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  identity:
+    <<: *service
+    build:
+      context: ./services
+      dockerfile: ../containers/containerfiles/service.containerfile
+      args: { SERVICE: identity }
+    environment:
+      <<: *service-env
+      DJANGO_SECRET_KEY: ${IDENTITY_SECRET_KEY}
+      DATABASE_URL: postgres://${POSTGRES_USER:-tenantly}:${POSTGRES_PASSWORD}@postgres:5432/identity
+
+  operations:
+    <<: *service
+    build:
+      context: ./services
+      dockerfile: ../containers/containerfiles/service.containerfile
+      args: { SERVICE: operations }
+    environment:
+      <<: *service-env
+      DJANGO_SECRET_KEY: ${OPERATIONS_SECRET_KEY}
+      DATABASE_URL: postgres://${POSTGRES_USER:-tenantly}:${POSTGRES_PASSWORD}@postgres:5432/operations
+
+  # Retries charges/refunds that couldn't reach billing when they were made
+  # (operations' money outbox). Same image; waits for operations to migrate.
+  operations-outbox:
+    <<: *service
+    build:
+      context: ./services
+      dockerfile: ../containers/containerfiles/service.containerfile
+      args: { SERVICE: operations }
+    command: ["python", "manage.py", "send_money", "--loop", "30"]
+    healthcheck: { disable: true }
+    environment:
+      <<: *service-env
+      DJANGO_SECRET_KEY: ${OPERATIONS_SECRET_KEY}
+      DATABASE_URL: postgres://${POSTGRES_USER:-tenantly}:${POSTGRES_PASSWORD}@postgres:5432/operations
+    depends_on:
+      operations: { condition: service_healthy }
+      billing: { condition: service_healthy }
+
+  billing:
+    <<: *service
+    build:
+      context: ./services
+      dockerfile: ../containers/containerfiles/service.containerfile
+      args: { SERVICE: billing }
+    environment:
+      <<: *service-env
+      DJANGO_SECRET_KEY: ${BILLING_SECRET_KEY}
+      DATABASE_URL: postgres://${POSTGRES_USER:-tenantly}:${POSTGRES_PASSWORD}@postgres:5432/billing
+
+  proxy:
+    image: docker.io/library/nginx:1.27-alpine
+    restart: unless-stopped
+    environment:
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./containers/proxy/default.conf.template:/etc/nginx/templates/default.conf.template:ro,z
+      - web-cache:/var/cache/nginx
+    depends_on:
+      identity: { condition: service_healthy }
+      operations: { condition: service_healthy }
+      billing: { condition: service_healthy }
+
+  frontend:
+    profiles: ["PROD"]
+    build:
+      context: ./frontend
+      dockerfile: ../containers/containerfiles/frontend.containerfile
+    restart: unless-stopped
+    environment: *frontend-env
+    depends_on: [proxy]
+
+  frontend-dev:
+    profiles: ["DEV"]
+    build:
+      context: ./frontend
+      dockerfile: ../containers/containerfiles/frontend.dev.containerfile
+    environment: *frontend-env
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app:z
+      - node_modules:/app/node_modules
+    networks:
+      default:
+        # The proxy routes to "frontend" in both profiles.
+        aliases: [frontend]
+    depends_on: [proxy]
+
 volumes:
   node_modules:
     driver: local
