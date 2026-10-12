@@ -17,6 +17,7 @@ import structure from './structure';
 import access from './access';
 import config from './config';
 import settings from './settings';
+import admin from './admin';
 import type { Message } from './define';
 
 export type { Message, Plural } from './define';
@@ -40,6 +41,7 @@ const areas = {
   access,
   config,
   settings,
+  admin,
 };
 
 type Areas = typeof areas;
