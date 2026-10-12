@@ -1,8 +1,17 @@
-# Tenantly gateway: the only port the outside world reaches.
+# Tenantly gateway: the only port the outside world reaches. Two hosts, never mixed:
+#
+# The app (any host but the admin one):
 #   /                 -> frontend (SSR)
 #   /api/identity/    -> identity service
 #   /api/operations/  -> operations service
 #   /api/billing/     -> billing service
+#   /admin, /api/identity/admin/ -> 404 (the console lives on its own host)
+#
+# The Tenantly admin console (${ADMIN_HOST}, and `admin-proxy` for the frontend's server):
+#   /admin            -> frontend (it refuses anything but the console on this host)
+#   /api/identity/admin/ -> identity's admin routes; every other /api -> 404
+#   /t/...            -> 404 (no workspace is served here)
+#
 # Service-to-service routes (/internal/) are never exposed.
 #
 # Upstreams are resolved per request (variables + resolver) so the proxy starts
@@ -18,7 +27,7 @@ map $http_x_forwarded_proto $forwarded_proto {
 }
 
 server {
-    listen 8080;
+    listen 8080 default_server;
     server_name _;
     client_max_body_size 2m;
     server_tokens off;
@@ -46,6 +55,11 @@ server {
         return 404;
     }
 
+    # The admin console and its API are only on the admin host.
+    location ~ ^/(api/identity/)?admin(/|$) {
+        return 404;
+    }
+
     location /api/identity/ {
         rewrite ^/api/identity/(.*)$ /$1 break;
         proxy_pass http://$identity;
@@ -70,6 +84,60 @@ server {
         proxy_cache web;
         proxy_cache_valid 200 7d;
         add_header X-Cache $upstream_cache_status;
+        proxy_pass http://$frontend;
+    }
+
+    location / {
+        proxy_pass http://$frontend;
+    }
+}
+
+server {
+    listen 8080;
+    server_name ${ADMIN_HOST} admin-proxy;
+    client_max_body_size 256k;
+    absolute_redirect off;
+    server_tokens off;
+
+    set $frontend   frontend:3000;
+    set $identity   identity:8000;
+
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $forwarded_proto;
+    proxy_set_header X-Internal-Token  "";
+    proxy_read_timeout 30s;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy no-referrer always;
+
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location /api/identity/admin/ {
+        rewrite ^/api/identity/admin/(.*)$ /admin/$1 break;
+        proxy_pass http://$identity;
+    }
+
+    # Nothing else of the services, and no workspace pages, on this host.
+    location /api/ {
+        return 404;
+    }
+
+    location ~ ^/t(/|$) {
+        return 404;
+    }
+
+    location = / {
+        return 302 /admin;
+    }
+
+    location /assets/ {
+        proxy_cache web;
+        proxy_cache_valid 200 7d;
         proxy_pass http://$frontend;
     }
 
