@@ -25,7 +25,8 @@ import {
 } from '../lib/queries';
 import { useTenantScope } from '../lib/scope';
 import { kindLabel } from '../lib/tree';
-import type { Permission, Template, WorkspaceSearch } from '../lib/types';
+import type { Permission, Standing, Template, WorkspaceSearch } from '../lib/types';
+import type { MessageKey } from '../locales';
 
 // The workspace shell. Everything below /t/<org> renders inside it, and the
 // `scope` search param it validates is inherited by every child route — one
@@ -76,7 +77,7 @@ const pagesFor = (t: Template): Array<NavPage> => [
   { to: '/t/$org/config', label: tr('shell.navConfig'), icon: 'config', group: 'admin', needs: ['config.write', 'pricing.write'] },
   { to: '/t/$org/settings', label: tr('shell.navSettings'), icon: 'config', group: 'admin', needs: ['tenant.manage'] },
   { to: '/t/$org/audit', label: tr('shell.navAudit'), icon: 'audit', group: 'admin', needs: ['audit.view'] },
-  { to: '/t/$org/billing', label: tr('shell.navBilling'), icon: 'shield', group: 'admin', needs: ['billing.manage', 'audit.view'] },
+  { to: '/t/$org/billing', label: tr('shell.navBilling'), icon: 'shield', group: 'admin', needs: ['billing.view', 'billing.manage'] },
 ];
 
 /** Where a role starts (docs/USAGE.md §1): the desk on Today, analysts on Insights, auditors on the trail. */
@@ -89,6 +90,15 @@ const homeFor = (permissions: Array<Permission>) =>
 
 // Only the first entry into a workspace is redirected, so Today stays reachable.
 const landed = new Set<string>();
+
+// An unpaid Tenantly invoice, said once on every page: what's held back and where to fix it.
+const BILLING_BANNER: Record<Standing, MessageKey | null> = {
+  active: null,
+  past_due: 'shell.billingPastDue',
+  limited: 'shell.billingLimited',
+  restricted: 'shell.billingRestricted',
+  canceled: 'shell.billingCanceled',
+};
 
 const groups = (): Array<[NavGroup, string | null]> => [
   ['operate', null],
@@ -175,8 +185,7 @@ function Shell() {
             </Show>
             <span class="tenant-name">{ctx.data.tenant.name}</span>
             <span class="tenant-meta">
-              {ctx.data.tenant.industry ? `${ctx.data.tenant.industry} · ` : ''}
-              {ctx.data.tenant.plan}
+              {[ctx.data.tenant.industry, ctx.data.billing?.plan].filter(Boolean).join(' · ')}
             </span>
             <Icon name="swap" size={16} />
           </button>
@@ -294,6 +303,22 @@ function Shell() {
             boundary resets when you navigate away (PageBoundary), rather than
             remounting the boundaries per path — remounting them under a
             router transition could leave the next page hidden. */}
+        <Show when={ctx.data.restricted}>
+          <p class="notice banner billing-banner" role="status">
+            {tr('shell.accountRestricted')}
+          </p>
+        </Show>
+        <Show when={BILLING_BANNER[ctx.data.billing?.status ?? 'active']}>
+          {(key) => (
+            <p class="notice banner billing-banner" role="status">
+              {tr(key())}{' '}
+              <Link to="/t/$org/billing" params={{ org: org() }} search={searchFor()}>
+                {tr('shell.billingOpen')}
+              </Link>
+            </p>
+          )}
+        </Show>
+
         <Errored fallback={(error, reset) => <PageBoundary error={error()} reset={reset} />}>
           <Loading fallback={<div class="page"><Skeleton rows={4} height={88} /></div>}>
             <Outlet />

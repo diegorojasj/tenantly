@@ -34,6 +34,14 @@ export default defineMessages(
     widenTo: 'Widen to {name}',
     jumpTo: 'Jump to…',
     signOut: 'Sign out',
+
+    // Tenantly plan standing
+    billingPastDue: 'Your Tenantly invoice is overdue. Nothing is blocked yet.',
+    billingLimited: 'Your Tenantly invoice is unpaid: new customers are on hold. Existing customers can still book.',
+    billingRestricted: 'Your Tenantly invoice is unpaid: new customers and new bookings are on hold. Check-ins and payments still work.',
+    billingCanceled: 'Your Tenantly plan has ended: this workspace is read-only.',
+    accountRestricted: 'Tenantly has restricted your account: you can look around, but not change anything. Contact Tenantly support.',
+    billingOpen: 'Plan & usage →',
   },
   {
     navToday: 'Hoy',
@@ -64,5 +72,12 @@ export default defineMessages(
     widenTo: 'Ampliar a {name}',
     jumpTo: 'Ir a…',
     signOut: 'Cerrar sesión',
+
+    billingPastDue: 'Tu factura de Tenantly está vencida. Aún no hay nada bloqueado.',
+    billingLimited: 'Tu factura de Tenantly está sin pagar: los clientes nuevos están en pausa. Los clientes actuales pueden seguir reservando.',
+    billingRestricted: 'Tu factura de Tenantly está sin pagar: los clientes y las reservas nuevas están en pausa. Los check-ins y los cobros siguen funcionando.',
+    billingCanceled: 'Tu plan de Tenantly terminó: este espacio de trabajo es de solo lectura.',
+    accountRestricted: 'Tenantly restringió tu cuenta: puedes consultar, pero no cambiar nada. Contacta con el soporte de Tenantly.',
+    billingOpen: 'Plan y uso →',
   },
 );
