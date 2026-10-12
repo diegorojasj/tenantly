@@ -11,7 +11,7 @@ from common.errors import NotFoundError
 from common.internal import InternalAuth
 
 from ..models import Tenant
-from ..schemas import AuditIn, PlanIn
+from ..schemas import AuditIn
 from ..services import ledger, plan
 
 if TYPE_CHECKING:
@@ -42,11 +42,5 @@ def record(request: HttpRequest, body: AuditIn) -> dict[str, str]:  # noqa: ARG0
 
 @router.get("/tenants/{tenant_id}/plan")
 def held_plan(request: HttpRequest, tenant_id: str) -> dict[str, object]:  # noqa: ARG001
-    """What billing prices the Tenantly plan on: the plan's name and, for Custom, its terms."""
+    """The plan identity held before billing owned it; billing imports it once."""
     return plan.held(tenant_id)
-
-
-@router.put("/tenants/{tenant_id}/plan")
-def assign_plan(request: HttpRequest, tenant_id: str, body: PlanIn) -> dict[str, object]:  # noqa: ARG001
-    """Tenantly moves a business to a plan, e.g. a Custom one agreed with its owner."""
-    return plan.assign(tenant_id, body)

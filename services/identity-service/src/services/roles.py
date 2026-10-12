@@ -21,7 +21,7 @@ from common.errors import ConflictError, ForbiddenError, InvalidError, NotFoundE
 from common.i18n import localize
 
 from ..models import Membership, Role
-from ..types.roles import OWNER, PERMISSION_LABELS, ROLES
+from ..types.roles import OWNER, OWNER_ONLY, PERMISSION_LABELS, ROLES
 from . import ledger
 
 if TYPE_CHECKING:
@@ -42,7 +42,8 @@ def role_dict(r: Role, members: int | None = None) -> dict[str, Any]:
         # The owner holds every permission, including ones added after the business was created.
         "permissions": list(PERMISSION_LABELS)
         if r.key == OWNER
-        else [p for p in r.permissions if p in PERMISSION_LABELS],
+        # Owner-only permissions a role row still lists (from before they were) grant nothing.
+        else [p for p in r.permissions if p in PERMISSION_LABELS and p not in OWNER_ONLY],
         "builtin": r.builtin,
     }
     if members is not None:
@@ -109,6 +110,7 @@ def listing(claims: TenantClaims) -> dict[str, Any]:
     return {
         "roles": [role_dict(r, counts.get(r.key, 0)) for r in rows],
         "permissions": [(key, str(label)) for key, label in PERMISSION_LABELS.items()],
+        "ownerOnly": sorted(OWNER_ONLY),
         "canEdit": claims.can("roles.assign"),
     }
 
@@ -129,6 +131,9 @@ def _clean_permissions(permissions: list[str]) -> list[str]:
     if unknown:
         msg = _("Unknown permission: %(permission)s") % {"permission": unknown[0]}
         raise InvalidError(msg)
+    if OWNER_ONLY & set(permissions):
+        msg = _("Only the owner manages the Tenantly plan: no other role can")
+        raise ForbiddenError(msg)
     # Stored in the catalogue's order, so the matrix and diffs read the same everywhere.
     return [p for p in PERMISSION_LABELS if p in set(permissions)]
 

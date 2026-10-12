@@ -18,11 +18,10 @@ class Tenant(models.Model):
     industry = models.CharField(max_length=160, blank=True)
     template_id = models.CharField(max_length=20)
     hue = models.PositiveSmallIntegerField()
-    # The Tenantly plan the business chose (Starter, Growth, Enterprise) or "Custom". Billing
-    # prices it and moves the month up a tier on its own when usage passes the limits.
+    # Legacy: the Tenantly plan as identity held it before billing owned subscriptions
+    # (docs/BILLING.md). Billing imports it once per business and never writes it back;
+    # both fields go once every business has a subscription in billing.
     plan = models.CharField(max_length=20, default="Starter")
-    # Custom plans only: what was negotiated with Tenantly. `price` (USD a month) and
-    # optional `customerLimit` / `paymentLimit`; a missing limit means none.
     plan_terms = models.JSONField(default=dict, blank=True)
     tenant_key = models.CharField(max_length=32, unique=True)
     residency = models.CharField(max_length=32, default="us-east-1")

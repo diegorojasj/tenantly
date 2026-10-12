@@ -85,3 +85,6 @@ ROLES: list[dict[str, Any]] = [
 ]
 
 OWNER = "owner"
+# Held by the owner alone, never by another role: the business's Tenantly subscription is the
+# owner's, and the team works under it.
+OWNER_ONLY = frozenset({"billing.manage"})

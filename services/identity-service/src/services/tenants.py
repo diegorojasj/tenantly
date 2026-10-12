@@ -20,7 +20,7 @@ from common.money import is_currency
 
 from ..models import Membership, Node, Role, Template, Tenant
 from ..types.roles import OWNER
-from . import ledger, roles
+from . import ledger, plan, roles
 
 if TYPE_CHECKING:
     from ..models import User
@@ -67,7 +67,6 @@ def tenant_dict(tenant: Tenant, template: Template | None = None) -> dict[str, A
         "industry": tenant.industry,
         "template": (template or template_of(tenant)).as_dict(),
         "hue": tenant.hue,
-        "plan": tenant.plan,
         "idp": _("Email & password"),
         "residency": tenant.residency,
         "tenantKey": tenant.tenant_key,
@@ -235,6 +234,8 @@ def enter(user: User, slug: str, scope: str | None) -> tuple[str, dict[str, Any]
         "builtin": False,
     }
     template = template_of(tenant)
+    # The plan's name and payment standing, from billing; empty (so: active) if it's down.
+    billing = plan.entitlements(str(tenant.id))
     claims = TenantClaims(
         user_id=str(user.id),
         user_name=user.name,
@@ -257,6 +258,9 @@ def enter(user: User, slug: str, scope: str | None) -> tuple[str, dict[str, Any]
         ),
         template=template.rules(),
         money=tenant.money(),
+        billing=billing,
+        # Restricted by Tenantly: every service lets them read, nothing more.
+        access=user.status,
     )
     context = {
         "tenant": tenant_dict(tenant, template),
@@ -266,6 +270,8 @@ def enter(user: User, slug: str, scope: str | None) -> tuple[str, dict[str, Any]
         "path": [node_dict(n) for n in _ancestry(nodes, focus)],
         "nodes": [node_dict(n, reachable=reaches(i)) for i, n in nodes.items()],
         "seats": tenant.memberships.exclude(status=Membership.Status.SUSPENDED).count(),
+        "billing": {"plan": billing.get("plan"), "status": billing.get("status", "active")},
+        "restricted": user.status == user.Status.RESTRICTED,
     }
     return issue(claims), context
 
