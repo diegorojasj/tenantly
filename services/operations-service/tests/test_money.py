@@ -51,6 +51,15 @@ def test_prices_stay_exact_decimals_from_form_to_charge(tenant: Tenant, calls: C
     ok(api.post(f"/bookings/{booked['id']}/status", {"status": "completed"}))
     charge = calls.bodies("/internal/charges")[-1]
     assert (charge["amount"], charge["currency"]) == ("36.30", "EUR")
+    assert (charge["bookingId"], charge["paid"]) == (booked["id"], False)
+
+    # Charged on return, collected later in billing: the board reads it as paid from then on.
+    board = lambda: ok(api.get("/calendar", scope=tenant.site_a, day=start))["board"]["bookings"][0]  # noqa: E731
+    assert board()["paid"] is False
+    calls.settled = [booked["id"]]
+    assert board()["paid"] is True
+    calls.down.add("billing.test")
+    assert board()["paid"] is False  # billing down: the board still loads
 
     catalog = ok(api.get("/catalog"))["offerings"]
     assert catalog[0]["offering"]["price"] == "12.10"

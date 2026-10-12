@@ -256,8 +256,10 @@ def test_money_waits_in_the_outbox_when_billing_is_down(tenant: Tenant, calls: C
     done = ok(api.post(f"/bookings/{booking['id']}/status", {"status": "completed"}))
     assert done["status"] == "completed"  # the desk isn't blocked by billing
     assert calls.bodies("/internal/charges") == []
-    pending = MoneyEvent.objects.get(sent_at__isnull=True)
+    pending = MoneyEvent.objects.get(sent_at__isnull=True, path="/internal/charges")
     assert pending.attempts == 1
+    # Usage waits behind it, in order: nothing for this tenant overtakes a failed event.
+    assert MoneyEvent.objects.filter(sent_at__isnull=True, path="/internal/usage", id__gt=pending.id).count() == 2
     assert "unavailable" in pending.error or "Request failed" in pending.error
 
     calls.down.clear()

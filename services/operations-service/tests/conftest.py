@@ -21,6 +21,8 @@ class Calls:
     down: set[str] = field(default_factory=set)
     # What billing answers for balances (customer id -> {"spend", "balance"} decimal strings).
     balances: dict[str, dict[str, str]] = field(default_factory=dict)
+    # Booking ids billing reports as collected in full since they were charged.
+    settled: list[str] = field(default_factory=list)
 
     def paths(self) -> list[str]:
         return [p for p, _ in self.log]
@@ -41,6 +43,8 @@ def calls() -> Calls:
         path = request.url.path
         if path.endswith("/internal/balances"):
             return httpx.Response(200, json=record.balances)
+        if path.endswith("/internal/bookings/settled"):
+            return httpx.Response(200, json=[b for b in body["bookingIds"] if b in record.settled])
         if path.endswith("/internal/revenue"):
             return httpx.Response(200, json={"byDay": {}, "byLocation": {}})
         if "/charges" in path and request.method == "GET":
@@ -126,6 +130,7 @@ class Tenant:
         template: dict[str, Any] | None = None,
         site_a_clock: tuple[str, tuple[int, int] | None] = ("UTC", None),
         money: dict[str, Any] | None = None,
+        billing: dict[str, Any] | None = None,
     ) -> str:
         everything = (
             "bookings.manage", "payments.collect", "tenant.manage", "members.invite", "roles.assign",
@@ -149,6 +154,7 @@ class Tenant:
             ),
             template=template or FITNESS,
             money=money or {},
+            billing=billing or {},
         )
         return issue(claims)
 
