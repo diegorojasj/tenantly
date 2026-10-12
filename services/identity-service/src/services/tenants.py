@@ -40,6 +40,16 @@ class ClockPatch:
     reset_hours: bool = False
 
 
+@dataclass(frozen=True)
+class PlacePatch:
+    """A location's street address and map pin; `None` leaves a field as it is."""
+
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    clear_pin: bool = False
+
+
 # ------------------------------------------------------------ templates --
 
 
@@ -88,6 +98,8 @@ def node_dict(node: Node, *, reachable: bool | None = None) -> dict[str, Any]:
         "status": node.status,
         "tz": node.tz,
         "hours": list(node.hours) if node.hours else None,
+        "address": node.address,
+        "pin": list(node.pin) if node.pin else None,
         "headcount": 0,
     }
     if reachable is not None:
@@ -411,13 +423,41 @@ def _clock_changes(node: Node, clock: ClockPatch) -> list[str]:
     return changes
 
 
+def _place_changes(node: Node, place: PlacePatch) -> list[str]:
+    """Street address and map pin, for locations only. Mutates `node`; returns what changed."""
+    wanted = place.address is not None or place.lat is not None or place.lng is not None or place.clear_pin
+    if not wanted:
+        return []
+    if node.kind != Node.Kind.LOCATION:
+        msg = _("Only locations have an address and a place on the map")
+        raise InvalidError(msg)
+    changes: list[str] = []
+    if place.address is not None and place.address.strip() != node.address:
+        node.address = place.address.strip()
+        changes.append(f"address {node.address}" if node.address else "address removed")
+    if place.clear_pin and node.pin:
+        node.lat = node.lng = None
+        changes.append("removed from the map")
+    elif place.lat is not None and place.lng is not None and (place.lat, place.lng) != node.pin:
+        node.lat, node.lng = round(place.lat, 6), round(place.lng, 6)
+        changes.append(f"pinned at {node.lat:.5f}, {node.lng:.5f}")
+    return changes
+
+
 @transaction.atomic
 def update_node(
-    claims: TenantClaims, node_id: str, *, name: str | None, status: str | None, clock: ClockPatch | None = None
+    claims: TenantClaims,
+    node_id: str,
+    *,
+    name: str | None,
+    status: str | None,
+    clock: ClockPatch | None = None,
+    place: PlacePatch | None = None,
 ) -> Node:
     claims.demand_any(("tenant.manage", "roles.assign"))
     node = _reachable_node(claims, node_id)
     changes: list[str] = _clock_changes(node, clock) if clock else []
+    changes += _place_changes(node, place) if place else []
     if name is not None and name.strip() and name.strip() != node.name:
         if len(name.strip()) < MIN_NAME:
             msg = _("Enter a name")

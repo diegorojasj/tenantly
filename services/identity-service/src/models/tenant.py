@@ -78,6 +78,10 @@ class Node(models.Model):
     tz = models.CharField(max_length=64, default="UTC")
     open = models.PositiveSmallIntegerField(null=True, blank=True)
     close = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Locations: a street address and the map pin (WGS84). No pin means "not on the map".
+    address = models.CharField(max_length=200, blank=True, default="")
+    lat = models.FloatField(null=True, blank=True)
+    lng = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -89,6 +93,10 @@ class Node(models.Model):
     @property
     def hours(self) -> tuple[int, int] | None:
         return (self.open, self.close) if self.open is not None and self.close is not None else None
+
+    @property
+    def pin(self) -> tuple[float, float] | None:
+        return (self.lat, self.lng) if self.lat is not None and self.lng is not None else None
 
 
 class Membership(models.Model):

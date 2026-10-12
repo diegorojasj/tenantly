@@ -92,11 +92,13 @@ def add_node(request: HttpRequest, body: NodeIn) -> dict[str, Any]:
 @router.patch("/nodes/{node_id}")
 def update_node(request: HttpRequest, node_id: str, body: NodePatch) -> dict[str, Any]:
     clock = tenants.ClockPatch(tz=body.tz, open=body.open, close=body.close, reset_hours=body.reset_hours)
-    node = tenants.update_node(claims_of(request), node_id, name=body.name, status=body.status, clock=clock)
+    place = tenants.PlacePatch(address=body.address, lat=body.lat, lng=body.lng, clear_pin=body.clear_pin)
+    node = tenants.update_node(
+        claims_of(request), node_id, name=body.name, status=body.status, clock=clock, place=place
+    )
     return tenants.node_dict(node)
 
 
 @router.get("/audit")
 def audit_trail(request: HttpRequest, scope: str | None = None) -> dict[str, Any]:
     return trail.read(claims_of(request), scope)
-
