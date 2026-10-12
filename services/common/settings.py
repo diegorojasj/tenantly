@@ -77,6 +77,10 @@ def build(*, service: str, base_dir: Path, apps: list[str]) -> dict[str, Any]:
         ],
         # Shared between services: tenant-token signing key and the internal-call key.
         "JWT_SECRET": env("JWT_SECRET", "test-jwt-secret-test-jwt-secret!" if testing() else ""),
+        # Tenantly admin tokens (identity only): a key of their own, never JWT_SECRET.
+        "ADMIN_JWT_SECRET": env("ADMIN_JWT_SECRET", "test-admin-secret-test-admin-secret" if testing() else ""),
+        # How long `manage.py activate_admin` opens an admin's access window for.
+        "ADMIN_WINDOW_MINUTES": int(env("ADMIN_WINDOW_MINUTES", "10")),
         "INTERNAL_TOKEN": env("INTERNAL_TOKEN", "test-internal-token" if testing() else ""),
         # Where the other services live (inside the network, not through the proxy).
         "IDENTITY_URL": env("IDENTITY_URL", "http://identity.test"),

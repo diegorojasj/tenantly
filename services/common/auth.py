@@ -31,13 +31,35 @@ if TYPE_CHECKING:
 ISSUER = "tenantly-identity"
 AUDIENCE = "tenantly"
 TOKEN_TTL_SECONDS = 300
+# Tenantly admin tokens: another audience and another key, so neither kind opens the other's routes.
+ADMIN_AUDIENCE = "tenantly-admin"
+ADMIN_TYPE = "admin"
+# An account Tenantly restricted: it may sign in and read, never change anything.
+RESTRICTED = "restricted"
 UTC_ZONE = ZoneInfo("UTC")
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+# What each payment standing holds back (docs/BILLING.md §5.1). `canceled` is read-only.
+STANDING_BLOCKS: dict[str, frozenset[str]] = {
+    "limited": frozenset({"customers.add"}),
+    "restricted": frozenset({"customers.add", "bookings.add"}),
+}
 
 
 def _secret() -> str:
     secret = getattr(settings, "JWT_SECRET", "")
     if not secret:
         msg = "JWT_SECRET is not set"
+        raise RuntimeError(msg)
+    return secret
+
+
+def _admin_secret() -> str:
+    secret = getattr(settings, "ADMIN_JWT_SECRET", "")
+    if not secret:
+        msg = "ADMIN_JWT_SECRET is not set"
+        raise RuntimeError(msg)
+    if secret == getattr(settings, "JWT_SECRET", ""):
+        msg = "ADMIN_JWT_SECRET must differ from JWT_SECRET"
         raise RuntimeError(msg)
     return secret
 
@@ -83,6 +105,10 @@ class TenantClaims:
     template: dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
     # The tenant's money settings (identity's `Tenant.money()`): currency, taxRate, taxLabel, pricesIncludeTax.
     money: dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
+    # The Tenantly plan's name and payment standing (billing's entitlements, docs/BILLING.md §5.1).
+    billing: dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
+    # The member's account standing with Tenantly: `active`, or `restricted` (read-only).
+    access: str = "active"
 
     # ------------------------------------------------------------ authorization
 
@@ -164,6 +190,25 @@ class TenantClaims:
         """The tenant's ISO 4217 currency; older tokens without money settings mean USD."""
         return str(self.money.get("currency") or "USD")
 
+    # ---------------------------------------------------------------- standing
+
+    @property
+    def standing(self) -> str:
+        """Payment standing with Tenantly; tokens without one (or billing unreachable) mean active."""
+        return str(self.billing.get("status") or "active")
+
+    def allow(self, action: str) -> None:
+        """Refuse what an unpaid Tenantly invoice holds back: new customers, then new bookings.
+
+        Everything already running (check-ins, completions, collecting payments) carries on.
+        """
+        if action in STANDING_BLOCKS.get(self.standing, ()):
+            if action == "customers.add":
+                msg = _("Your Tenantly invoice is overdue: pay it to add new customers again")
+            else:
+                msg = _("Your Tenantly invoice is overdue: pay it to take new bookings again")
+            raise ForbiddenError(msg)
+
     def moves(self, status: str) -> list[str]:
         """Statuses a booking in `status` may move to, per the template's lifecycle."""
         return list(self.template.get("transitions", {}).get(status, []))
@@ -187,6 +232,8 @@ def issue(claims: TenantClaims, ttl: int = TOKEN_TTL_SECONDS) -> str:
         "nodes": [n.wire() for n in claims.nodes],
         "rules": claims.template,
         "money": claims.money,
+        "billing": claims.billing,
+        "access": claims.access,
     }
     return jwt.encode(payload, _secret(), algorithm="HS256")
 
@@ -209,14 +256,28 @@ def verify(token: str) -> TenantClaims:
         nodes=tuple(Node.unwire(n) for n in data["nodes"]),
         template=data.get("rules") or {},
         money=data.get("money") or {},
+        billing=data.get("billing") or {},
+        access=data.get("access") or "active",
     )
 
 
 class TenantAuth(HttpBearer):
     """`Authorization: Bearer <tenant token>` -> `request.auth` is a TenantClaims."""
 
-    def authenticate(self, request: HttpRequest, token: str) -> TenantClaims:  # noqa: ARG002
-        return verify(token)
+    def authenticate(self, request: HttpRequest, token: str) -> TenantClaims:
+        claims = verify(token)
+        if claims.access == RESTRICTED and request.method not in SAFE_METHODS:
+            msg = _("Tenantly has restricted your account: you can look, but not change anything")
+            raise ForbiddenError(msg)
+        # A canceled subscription is read-only everywhere except billing, where it's paid.
+        if (
+            claims.standing == "canceled"
+            and request.method not in SAFE_METHODS
+            and getattr(settings, "SERVICE_NAME", "") != "billing"
+        ):
+            msg = _("This workspace is read-only: its Tenantly plan has ended")
+            raise ForbiddenError(msg)
+        return claims
 
 
 def claims_of(request: HttpRequest) -> TenantClaims:
@@ -225,3 +286,42 @@ def claims_of(request: HttpRequest) -> TenantClaims:
         msg = _("Sign in to continue")
         raise UnauthenticatedError(msg)
     return claims
+
+
+# ----------------------------------------------------------- admin tokens --
+
+
+@dataclass(frozen=True)
+class AdminClaims:
+    admin_id: str
+    name: str
+    # When the admin's current access window opened: a token from an earlier window is void.
+    window: int
+
+
+def issue_admin(claims: AdminClaims, ttl: int) -> str:
+    """An admin token never outlives the access window it was issued in (`ttl` is what's left)."""
+    now = int(time.time())
+    payload = {
+        "iss": ISSUER,
+        "aud": ADMIN_AUDIENCE,
+        "typ": ADMIN_TYPE,
+        "iat": now,
+        "exp": now + max(1, ttl),
+        "sub": claims.admin_id,
+        "name": claims.name,
+        "win": claims.window,
+    }
+    return jwt.encode(payload, _admin_secret(), algorithm="HS256")
+
+
+def verify_admin(token: str) -> AdminClaims:
+    try:
+        data = jwt.decode(token, _admin_secret(), algorithms=["HS256"], audience=ADMIN_AUDIENCE, issuer=ISSUER)
+    except jwt.PyJWTError as exc:
+        msg = _("Your admin session ended — sign in again")
+        raise UnauthenticatedError(msg) from exc
+    if data.get("typ") != ADMIN_TYPE:
+        msg = _("Your admin session ended — sign in again")
+        raise UnauthenticatedError(msg)
+    return AdminClaims(admin_id=data["sub"], name=data.get("name", ""), window=int(data.get("win", 0)))
