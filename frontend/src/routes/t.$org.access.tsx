@@ -199,7 +199,7 @@ function AccessPage() {
             org={org()}
             role={catalog.data.roles.find((r) => r.id === key())}
             permissions={catalog.data.permissions}
-            mine={mine()}
+            mine={mine().filter((p) => !catalog.data.ownerOnly.includes(p))}
             onClose={() => setEditing(null)}
           />
         )}
@@ -211,6 +211,7 @@ function AccessPage() {
           roles={catalog.data.roles.filter((r) => r.id !== 'owner' || ctx.data.role.id === 'owner')}
           places={ctx.data.nodes.filter((n) => n.reachable)}
           defaultScope={ctx.data.scopeId}
+          canCreateAccounts={members.data.canCreateAccounts}
           onClose={() => setInviting(false)}
         />
       </Show>
@@ -270,12 +271,18 @@ function MemberRow(props: {
   );
 }
 
+/**
+ * Adds someone to the team. An existing Tenantly account gets an invite link; anyone else gets an
+ * account the owner creates here (name and first password), on the team at once and under the
+ * business's plan. Only the owner sees those fields: nobody else creates accounts.
+ */
 function InviteDrawer(props: {
   org: string;
   template: Template;
   roles: Array<{ id: RoleId; label: string; summary: string }>;
   places: Array<ScopeNode>;
   defaultScope: string;
+  canCreateAccounts: boolean;
   onClose: () => void;
 }) {
   // The desk lead when the business still has that role; else its least powerful listed one.
@@ -283,15 +290,20 @@ function InviteDrawer(props: {
     () => props.roles.find((r) => r.id === 'location_manager')?.id ?? props.roles.at(-1)?.id ?? '',
     { name: 'inviteRole' },
   );
-  const [link, setLink] = createSignal<{ email: string; url: string } | null>(null, { name: 'inviteLink' });
+  const [done, setDone] = createSignal<{ email: string; url: string | null } | null>(null, { name: 'inviteDone' });
   const invite = useMutation(() => ({
     // `respond()` sends its value as the body, so the envelope's value is what arrives here.
-    mutationFn: (input: { email: string; role: RoleId; scopeId: string }) =>
-      inviteMember({ org: props.org, ...input }) as unknown as Promise<{ invite: string }>,
+    mutationFn: (input: { email: string; role: RoleId; scopeId: string; name?: string; password?: string }) =>
+      inviteMember({ org: props.org, ...input }) as unknown as Promise<{ invite?: string; account?: string }>,
     onSuccess: (result, input) => {
-      // No email delivery yet: the inviter hands the link over themselves.
-      setLink({ email: input.email, url: `${location.origin}/?invite=${encodeURIComponent(result.invite)}` });
-      notify(t('access.toastInviteCreated', { email: input.email }));
+      if (result.invite) {
+        // No email delivery yet: the inviter hands the link over themselves.
+        setDone({ email: input.email, url: `${location.origin}/?invite=${encodeURIComponent(result.invite)}` });
+        notify(t('access.toastInviteCreated', { email: input.email }));
+      } else {
+        setDone({ email: input.email, url: null });
+        notify(t('access.toastAccountCreated', { email: input.email }));
+      }
     },
   }));
   return (
@@ -302,21 +314,35 @@ function InviteDrawer(props: {
           <Icon name="x" />
         </button>
       </header>
-      <Show when={link()}>
+      <Show when={done()}>
         {(sent) => (
           <div class="form">
-            <p>
-              {t('access.inviteSentBefore')} <strong>{sent().email}</strong>
-              {t('access.inviteSentAfter')}
-            </p>
-            <input type="text" readonly value={sent().url} aria-label={t('access.inviteLink')} onFocus={(e) => e.currentTarget.select()} />
-            <button
-              type="button"
-              class="btn"
-              onClick={() => navigator.clipboard.writeText(sent().url).then(() => notify(t('access.toastLinkCopied')))}
+            <Show
+              when={sent().url}
+              fallback={
+                <p>
+                  {t('access.accountCreatedBefore')} <strong>{sent().email}</strong>
+                  {t('access.accountCreatedAfter', { address: location.origin })}
+                </p>
+              }
             >
-              {t('access.copyLink')}
-            </button>
+              {(url) => (
+                <>
+                  <p>
+                    {t('access.inviteSentBefore')} <strong>{sent().email}</strong>
+                    {t('access.inviteSentAfter')}
+                  </p>
+                  <input type="text" readonly value={url()} aria-label={t('access.inviteLink')} onFocus={(e) => e.currentTarget.select()} />
+                  <button
+                    type="button"
+                    class="btn"
+                    onClick={() => navigator.clipboard.writeText(url()).then(() => notify(t('access.toastLinkCopied')))}
+                  >
+                    {t('access.copyLink')}
+                  </button>
+                </>
+              )}
+            </Show>
             <button type="button" class="btn ghost" onClick={() => props.onClose()}>
               {t('access.done')}
             </button>
@@ -325,17 +351,40 @@ function InviteDrawer(props: {
       </Show>
       <form
         class="form"
-        hidden={!!link()}
+        hidden={!!done()}
         onSubmit={(event) => {
           event.preventDefault();
           const d = new FormData(event.currentTarget);
-          invite.mutate({ email: String(d.get('email')), role: roleId(), scopeId: String(d.get('scope')) });
+          const name = String(d.get('name') ?? '').trim();
+          const password = String(d.get('password') ?? '');
+          // Server function args must be JSON-safe: only send the account fields when given.
+          invite.mutate({
+            email: String(d.get('email')),
+            role: roleId(),
+            scopeId: String(d.get('scope')),
+            ...(name ? { name } : {}),
+            ...(password ? { password } : {}),
+          });
         }}
       >
         <label>
           <span class="form-label">{t('access.email')}</span>
           <input type="email" name="email" required />
         </label>
+        <Show when={props.canCreateAccounts} fallback={<p class="muted hint">{t('access.inviteOnlyHint')}</p>}>
+          <fieldset class="form">
+            <legend class="form-label">{t('access.newAccount')}</legend>
+            <label>
+              <span class="form-label">{t('access.name')}</span>
+              <input type="text" name="name" autocomplete="off" maxlength="120" />
+            </label>
+            <label>
+              <span class="form-label">{t('access.firstPassword')}</span>
+              <input type="password" name="password" autocomplete="new-password" minlength="8" />
+            </label>
+            <span class="muted hint">{t('access.newAccountHint')}</span>
+          </fieldset>
+        </Show>
         <label>
           <span class="form-label">{t('access.role')}</span>
           <select value={roleId()} onChange={(event) => setRoleId(event.currentTarget.value as RoleId)}>
