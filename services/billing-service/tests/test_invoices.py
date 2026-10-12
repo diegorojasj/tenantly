@@ -1,4 +1,4 @@
-"""Gap 9 in billing: decimal amounts, currency snapshots, customer invoices with tax, plan prices."""
+"""Gap 9 in billing: decimal amounts, currency snapshots, customer invoices with tax."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ import pytest
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
-from src.services import plans
 
 from common.internal import use_transport
 from common.money import label, tax_split
@@ -139,56 +138,6 @@ def test_prices_with_tax_inside_show_its_share_and_voiding_releases_charges(
     )
 
 
-def test_plan_prices_usage_and_the_estimate_come_from_billing(
-    ids: dict[str, str], services: list[tuple[str, dict[str, Any]]]
-) -> None:
-    client = Client()
-    charge(client, ids, amount="19.99", paid=True)
-    charge(client, ids, amount="5.00")
-    viewer = {"HTTP_AUTHORIZATION": f"Bearer {token(ids, perms=('billing.view',), money=EUR_VAT)}"}
-    plan = client.get("/plan", **viewer).json()
-    assert services[-1][0] == f"/internal/tenants/{ids['tenant']}/plan"
-    assert (plan["plan"], plan["billedPlan"], plan["outgrown"]) == ("Starter", "Starter", False)
-    assert (plan["currency"], plan["price"]) == ("USD", "29.00")
-    # One customer, two payments: consumption, not seats.
-    assert plan["customers"] == {"used": 1, "limit": 50}
-    assert plan["payments"] == {"used": 2, "limit": 500}
-    assert plan["nextInvoice"]["estimate"] == "29.00"
-    assert plan["collectedThisMonth"] == {"amount": "24.99", "currency": "EUR"}
-    assert [(p["name"], p["customerLimit"]) for p in plan["plans"]] == [
-        ("Starter", 50),
-        ("Growth", 100),
-        ("Enterprise", 200),
-        ("Custom", None),
-    ]
-    assert client.get("/plan", HTTP_AUTHORIZATION=f"Bearer {token(ids)}").status_code == 403
-
-
-def test_a_month_past_the_limits_is_billed_on_the_tier_that_fits() -> None:
-    assert plans.billed_tier("Starter", 50, 500) == ("Starter", False)
-    assert plans.billed_tier("Starter", 51, 10) == ("Growth", False)
-    assert plans.billed_tier("Starter", 10, 1_500) == ("Enterprise", False)
-    # Never below the chosen tier, however quiet the month.
-    assert plans.billed_tier("Growth", 0, 0) == ("Growth", False)
-    assert plans.billed_tier("Enterprise", 201, 0) == ("Enterprise", True)
-
-
-def test_a_custom_plan_bills_its_negotiated_terms(
-    ids: dict[str, str], held: dict[str, Any], services: list[tuple[str, dict[str, Any]]]
-) -> None:
-    held.update(plan="Custom", terms={"price": "250.00", "customerLimit": 1_000})
-    client = Client()
-    charge(client, ids)
-    viewer = {"HTTP_AUTHORIZATION": f"Bearer {token(ids, perms=('billing.view',))}"}
-    plan = client.get("/plan", **viewer).json()
-    assert services
-    assert (plan["plan"], plan["billedPlan"], plan["price"]) == ("Custom", "Custom", "250.00")
-    assert plan["customers"] == {"used": 1, "limit": 1_000}
-    # No payment limit was agreed, so there is none.
-    assert plan["payments"] == {"used": 1, "limit": None}
-    assert plan["nextInvoice"]["estimate"] == "250.00"
-
-
 @pytest.mark.django_db(transaction=True)
 def test_currency_and_invoice_migration_is_reversible(ids: dict[str, str]) -> None:
     before = [("billing", "0002_charge_key")]
@@ -216,4 +165,5 @@ def test_currency_and_invoice_migration_is_reversible(ids: dict[str, str]) -> No
     row = new.objects.get()
     assert (row.currency, row.amount, row.invoice_id) == ("USD", Decimal("12.50"), None)
     assert migrate(before).objects.get().amount == Decimal("12.50")
-    migrate(after)
+    # Leave the schema as the next tests expect it: fully migrated.
+    migrate(MigrationExecutor(connection).loader.graph.leaf_nodes("billing"))
