@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Sum
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
@@ -54,6 +54,7 @@ def charge_dict(charge: Charge, on: date) -> dict[str, Any]:
         "date": charge.date.isoformat(),
         "status": status_of(charge, on),
         "invoiceId": str(charge.invoice_id) if charge.invoice_id else None,
+        "bookingId": str(charge.booking_id) if charge.booking_id else None,
     }
 
 
@@ -94,6 +95,33 @@ def payments(claims: TenantClaims, scope: str | None) -> dict[str, Any]:
     }
 
 
+def for_booking(claims: TenantClaims, booking_id: str) -> dict[str, Any]:
+    """What one booking raised (its price, a drop-in seat, fees), for the booking panel.
+
+    Staff who run bookings see it so they can tell the customer what's owed; only
+    `payments.collect` acts on it. Roles that see neither get an empty answer, not an error.
+    """
+    now = today()
+    if not any(claims.can(p) for p in (*WORK, *MONEY)):
+        return {"canSee": False, "canCollect": False, "charges": []}
+    rows = Charge.objects.filter(tenant_id=claims.tenant_id, booking_id=booking_id).order_by("created_at")
+    return {
+        "canSee": True,
+        "canCollect": claims.can("payments.collect"),
+        "charges": [charge_dict(c, now) for c in rows if claims.reaches(str(c.location_id))],
+    }
+
+
+def settled(tenant_id: str, booking_ids: list[str]) -> list[str]:
+    """Of these bookings, the ones whose charges were all paid after the fact (collected or invoiced)."""
+    rows = Charge.objects.filter(tenant_id=tenant_id, booking_id__in=booking_ids).exclude(status=Charge.Status.REFUNDED)
+    paid: set[str] = set()
+    owed: set[str] = set()
+    for booking_id, status in rows.values_list("booking_id", "status"):
+        (owed if status == Charge.Status.DUE else paid).add(str(booking_id))
+    return sorted(paid - owed)
+
+
 def revenue(claims: TenantClaims, scope: str | None, start: date, end: date) -> dict[str, str]:
     """Revenue raised per day (anything not refunded), by charge date."""
     claims.demand_any(WORK)
@@ -128,18 +156,6 @@ def revenue_split(tenant_id: str, location_ids: list[str], start: date, end: dat
         "byDay": {k: wire(v) for k, v in by_day.items()},
         "byLocation": {k: wire(v) for k, v in by_location.items()},
     }
-
-
-def month_usage(tenant_id: str) -> tuple[int, int, Decimal]:
-    """This month's consumption: customers charged, charges raised, and their total."""
-    start = today().replace(day=1)
-    month = Charge.objects.filter(tenant_id=tenant_id, date__gte=start)
-    counts = month.aggregate(
-        customers=Count("customer_id", distinct=True),
-        n=Count("id"),
-        collected=Sum("amount", default=Decimal(0)),
-    )
-    return counts["customers"], counts["n"], counts["collected"]
 
 
 # ------------------------------------------------------------- writing --

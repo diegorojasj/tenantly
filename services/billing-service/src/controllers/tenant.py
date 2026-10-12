@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
@@ -9,8 +10,8 @@ from ninja import Router
 
 from common.auth import TenantAuth, claims_of
 
-from ..schemas import InvoiceIn
-from ..services import charges, invoices, plans
+from ..schemas import CardIn, InvoiceIn, PlanChangeIn, PlanSettingsIn
+from ..services import charges, invoices, notices, overview, statements, stripe, subscriptions, usage
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -35,14 +36,95 @@ def refund(request: HttpRequest, charge_id: str) -> dict[str, Any]:
     return charges.charge_dict(charge, charges.today())
 
 
+@router.get("/bookings/{booking_id}/charges")
+def booking_charges(request: HttpRequest, booking_id: uuid.UUID) -> dict[str, Any]:
+    return charges.for_booking(claims_of(request), str(booking_id))
+
+
 @router.get("/revenue")
 def revenue(request: HttpRequest, start: date, end: date, scope: str | None = None) -> dict[str, str]:
     return charges.revenue(claims_of(request), scope, start, end)
 
 
+# ------------------------------------------------- the Tenantly plan --
+
+
+def _key(request: HttpRequest) -> str | None:
+    """The client's Idempotency-Key: a retried change finds the one it already made."""
+    return (request.headers.get("Idempotency-Key") or "")[:64] or None
+
+
 @router.get("/plan")
 def plan(request: HttpRequest) -> dict[str, Any]:
-    return plans.usage(claims_of(request))
+    return overview.overview(claims_of(request))
+
+
+@router.get("/plan/history")
+def plan_history(request: HttpRequest) -> dict[str, Any]:
+    return statements.history(claims_of(request))
+
+
+@router.get("/plan/customers")
+def plan_customers(request: HttpRequest, period: int | None = None, offset: int = 0) -> dict[str, Any]:
+    return usage.counted(claims_of(request), period, max(0, offset))
+
+
+@router.get("/plan/invoices/{invoice_id}")
+def plan_invoice(request: HttpRequest, invoice_id: uuid.UUID) -> dict[str, Any]:
+    return statements.detail(claims_of(request), str(invoice_id))
+
+
+@router.post("/plan/change")
+def change_plan(request: HttpRequest, body: PlanChangeIn) -> dict[str, Any]:
+    claims = claims_of(request)
+    subscriptions.change_plan(claims, body.plan, body.revision, _key(request))
+    return overview.overview(claims)
+
+
+@router.post("/plan/withdraw")
+def withdraw_change(request: HttpRequest, revision: int) -> dict[str, Any]:
+    claims = claims_of(request)
+    subscriptions.withdraw(claims, revision, _key(request))
+    return overview.overview(claims)
+
+
+@router.post("/plan/cancel")
+def cancel_plan(request: HttpRequest, revision: int) -> dict[str, Any]:
+    claims = claims_of(request)
+    subscriptions.cancel(claims, revision, _key(request))
+    return overview.overview(claims)
+
+
+@router.post("/plan/resume")
+def resume_plan(request: HttpRequest, revision: int) -> dict[str, Any]:
+    claims = claims_of(request)
+    subscriptions.resume(claims, revision, _key(request))
+    return overview.overview(claims)
+
+
+@router.put("/plan/settings")
+def plan_settings(request: HttpRequest, body: PlanSettingsIn) -> dict[str, Any]:
+    claims = claims_of(request)
+    subscriptions.update_settings(claims, body)
+    return overview.overview(claims)
+
+
+@router.post("/plan/extension")
+def plan_extension(request: HttpRequest) -> dict[str, Any]:
+    claims = claims_of(request)
+    subscriptions.extend(claims, _key(request))
+    return overview.overview(claims)
+
+
+@router.post("/plan/card")
+def plan_card(request: HttpRequest, body: CardIn) -> dict[str, str]:
+    return stripe.card_session(claims_of(request), body.return_url)
+
+
+@router.post("/plan/notices/{notice_id}/read")
+def read_notice(request: HttpRequest, notice_id: int) -> dict[str, bool]:
+    notices.mark_read(claims_of(request), notice_id)
+    return {"ok": True}
 
 
 @router.get("/invoices")
