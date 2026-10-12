@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+import io
+import json
 from typing import Any
 
+import httpx
 import pytest
+from django.core.management import call_command
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
-from src.models import Membership, Node, Role, Template
+from src.models import Membership, Node, Role, Template, Tenant
 
 from common.auth import verify
+from common.internal import use_transport
 
-from .test_identity import enter, get, new_business, post, signup
+from .test_identity import account, enter, get, new_business, post
 
 pytestmark = pytest.mark.django_db
 
@@ -26,16 +31,18 @@ def delete(client: Client, path: str, token: str) -> Any:
 
 
 def join(client: Client, owner_token: str, email: str, role: str, scope_id: str) -> str:
-    """Invite `email` as `role` and sign them up with the code; returns their session."""
-    invited = post(client, "/tenant/members", {"email": email, "role": role, "scopeId": scope_id}, owner_token)
-    assert invited.status_code == 200, invited.content
+    """The owner creates `email`'s team account as `role`; returns their session."""
     body = {
-        "name": email.split("@", maxsplit=1)[0],
         "email": email,
+        "role": role,
+        "scopeId": scope_id,
+        "name": email.split("@", maxsplit=1)[0],
         "password": "correct-horse",
-        "invite": invited.json()["invite"],
     }
-    return post(client, "/auth/signup", body).json()["token"]
+    created = post(client, "/tenant/members", body, owner_token)
+    assert created.status_code == 200, created.content
+    assert "account" in created.json()
+    return post(client, "/auth/login", {"email": email, "password": "correct-horse"}).json()["token"]
 
 
 def test_templates_name_their_levels_and_the_tree_goes_as_deep_as_they_do() -> None:
@@ -64,9 +71,8 @@ def test_templates_name_their_levels_and_the_tree_goes_as_deep_as_they_do() -> N
         open=480,
         close=1200,
     )
-    session = signup(client, "Ana", "ana@example.com")
-    created = post(client, "/tenants", {"name": "Burger Co", "templateId": "franchise", "locationName": "HQ"}, session)
-    tenant = created.json()
+    session = account(client, "Ana", "ana@example.com")
+    tenant = new_business(client, session, "Burger Co", template_id="franchise", location="HQ")
     token = enter(client, session, tenant["slug"])["token"]
     org = next(n for n in verify(token).nodes if n.kind == "org")
 
@@ -106,7 +112,7 @@ def test_templates_name_their_levels_and_the_tree_goes_as_deep_as_they_do() -> N
 
 def test_custom_roles_never_grant_more_than_their_maker_holds() -> None:
     client = Client()
-    owner_session = signup(client, "Ana", "ana@example.com")
+    owner_session = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, owner_session)
     owner = enter(client, owner_session, tenant["slug"])["token"]
     org = next(n for n in verify(owner).nodes if n.kind == "org")
@@ -140,6 +146,10 @@ def test_custom_roles_never_grant_more_than_their_maker_holds() -> None:
     }
     assert post(client, "/tenant/roles", {"label": "night desk"}, owner).status_code == 409
     assert post(client, "/tenant/roles", {"label": "Bad", "permissions": ["root"]}, owner).status_code == 422
+    # The Tenantly plan is the owner's alone: not even the owner can hand it to another role.
+    billing = post(client, "/tenant/roles", {"label": "Payer", "permissions": ["billing.manage"]}, owner)
+    assert billing.status_code == 403
+    assert listed["ownerOnly"] == ["billing.manage"]
 
     # Someone holding the custom role gets exactly its permissions.
     lee = join(client, owner, "lee@example.com", "night_desk", org.id)
@@ -168,6 +178,10 @@ def test_custom_roles_never_grant_more_than_their_maker_holds() -> None:
     edited = patch(client, "/tenant/roles/night_desk", {"permissions": ["bookings.manage"]}, owner)
     assert edited.json()["members"] == 1
     assert verify(enter(client, lee, tenant["slug"])["token"]).permissions == ("bookings.manage",)
+    # A role row stored with an owner-only permission (from before it was one) still grants nothing of it.
+    Role.objects.filter(key="night_desk").update(permissions=["bookings.manage", "billing.manage"])
+    assert verify(enter(client, lee, tenant["slug"])["token"]).permissions == ("bookings.manage",)
+    Role.objects.filter(key="night_desk").update(permissions=["bookings.manage"])
     # A role someone holds can't be removed; an unused one can.
     assert delete(client, "/tenant/roles/night_desk", owner).status_code == 409
     assert delete(client, "/tenant/roles/greeter", owner).status_code == 200
@@ -184,7 +198,7 @@ def test_custom_roles_never_grant_more_than_their_maker_holds() -> None:
 
 def test_money_and_branding_settings_travel_with_the_tenant() -> None:
     client = Client()
-    owner_session = signup(client, "Ana", "ana@example.com")
+    owner_session = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, owner_session)
     assert (tenant["currency"], tenant["taxRate"], tenant["pricesIncludeTax"]) == ("USD", "0.00", True)
     owner = enter(client, owner_session, tenant["slug"])["token"]
@@ -235,7 +249,7 @@ def test_money_and_branding_settings_travel_with_the_tenant() -> None:
         assert patch(client, "/tenant/settings", body, owner).status_code == 422, body
 
     # A domain belongs to one business only.
-    other_session = signup(client, "Bo", "bo@example.com")
+    other_session = account(client, "Bo", "bo@example.com")
     other = new_business(client, other_session, "Other Gym")
     other_token = enter(client, other_session, other["slug"])["token"]
     assert patch(client, "/tenant/settings", {"customDomain": "book.ironworks.example"}, other_token).status_code == 409
@@ -269,28 +283,43 @@ def test_money_and_branding_settings_travel_with_the_tenant() -> None:
     assert patch(client, "/tenant/settings", {"currency": "USD"}, admin).status_code == 403
 
 
-def test_billing_reads_the_plan_and_tenantly_sets_a_custom_one() -> None:
+def test_billing_imports_the_old_plan_and_staff_changes_go_through_billing() -> None:
     client = Client()
-    session = signup(client, "Ana", "ana@example.com")
+    session = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, session)
     path = f"/internal/tenants/{tenant['id']}/plan"
     internal = {"HTTP_X_INTERNAL_TOKEN": "test-internal-token"}
     assert client.get(path).status_code == 401
-    assert client.get(path, **internal).json() == {"plan": "Starter", "terms": None}
+    held = client.get(path, **internal).json()
+    assert (held["plan"], held["terms"]) == ("Starter", None)
+    assert held["since"].startswith(str(Tenant.objects.get(id=tenant["id"]).created_at.date()))
+    # Only billing changes a plan now: identity no longer takes a PUT.
+    assert client.put(path, {"plan": "Growth"}, content_type="application/json", **internal).status_code == 405
 
-    def put(body: dict[str, Any]) -> Any:
-        return client.put(path, body, content_type="application/json", **internal)
+    sent: list[tuple[str, str, dict[str, Any]]] = []
 
-    # Custom needs its terms, and only Custom takes them.
-    assert put({"plan": "Custom"}).status_code == 422
-    assert put({"plan": "Growth", "terms": {"price": "10"}}).status_code == 422
-    custom = put({"plan": "Custom", "terms": {"price": "250", "customerLimit": 1000}})
-    assert custom.json() == {
-        "plan": "Custom",
-        "terms": {"price": "250", "customerLimit": 1000, "paymentLimit": None},
-    }
-    assert client.get(path, **internal).json()["plan"] == "Custom"
-    assert put({"plan": "Growth"}).json() == {"plan": "Growth", "terms": None}
+    def billing(request: httpx.Request) -> httpx.Response:
+        sent.append((request.method, request.url.path, json.loads(request.content) if request.content else {}))
+        if request.url.path.endswith("/entitlements"):
+            return httpx.Response(200, json={"plan": "Growth", "status": "limited"})
+        return httpx.Response(200, json={"plan": "Custom", "status": "active"})
+
+    use_transport(httpx.MockTransport(billing))
+    try:
+        call_command(
+            "set_plan", tenant["slug"], "custom", "--price", "250", "--customers", "1000", stdout=io.StringIO()
+        )
+        assert sent[-1] == (
+            "PUT",
+            path,
+            {"plan": "custom", "terms": {"price": "250", "customerLimit": 1000}, "reason": ""},
+        )
+        # The token carries billing's word on the plan and the payment standing.
+        entered = enter(client, session, tenant["slug"])
+        assert verify(entered["token"]).standing == "limited"
+        assert entered["context"]["billing"] == {"plan": "Growth", "status": "limited"}
+    finally:
+        use_transport(None)
 
 
 @pytest.mark.django_db(transaction=True)

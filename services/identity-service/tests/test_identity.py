@@ -8,9 +8,11 @@ import pytest
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
-from src.models import Template
+from src.models import Template, User
+from src.services import accounts, tenants
 
 from common.auth import verify
+from common.errors import ConflictError, InvalidError
 
 pytestmark = pytest.mark.django_db
 
@@ -24,21 +26,25 @@ def get(client: Client, path: str, token: str) -> Any:
     return client.get(path, HTTP_AUTHORIZATION=f"Bearer {token}")
 
 
-def signup(client: Client, name: str, email: str) -> str:
-    response = post(client, "/auth/signup", {"name": name, "email": email, "password": "correct-horse"})
+def account(client: Client, name: str, email: str) -> str:
+    """An account as a Tenantly admin or an owner would create it, signed in; returns its session."""
+    accounts.create_account(name, email, "correct-horse")
+    response = post(client, "/auth/login", {"email": email, "password": "correct-horse"})
     assert response.status_code == 200, response.content
     return response.json()["token"]
 
 
-def new_business(client: Client, session: str, name: str = "Ironworks Gym") -> dict[str, Any]:
-    response = post(
-        client,
-        "/tenants",
-        {"name": name, "industry": "Gym", "locationName": "Union Square"},
-        session,
-    )
-    assert response.status_code == 200, response.content
-    return response.json()
+def new_business(
+    client: Client,
+    session: str,
+    name: str = "Ironworks Gym",
+    template_id: str = "general",
+    location: str = "Union Square",
+) -> dict[str, Any]:
+    """A business opened for the signed-in owner, as the admin console does."""
+    owner = User.objects.get(id=get(client, "/me", session).json()["id"])
+    tenant = tenants.create_tenant(owner, name=name, industry="Gym", location_name=location, template_id=template_id)
+    return tenants.tenant_dict(tenant)
 
 
 def enter(client: Client, session: str, slug: str, scope: str | None = None) -> dict[str, Any]:
@@ -47,12 +53,16 @@ def enter(client: Client, session: str, slug: str, scope: str | None = None) -> 
     return response.json()
 
 
-def test_signup_login_and_errors_read_for_people() -> None:
+def test_nobody_signs_up_and_sign_in_errors_read_for_people() -> None:
     client = Client()
-    signup(client, "Ana Solís", "Ana@Example.com")
-    duplicate = post(client, "/auth/signup", {"name": "Ana", "email": "ana@example.com", "password": "12345678"})
-    assert duplicate.status_code == 409
-    assert "already exists" in duplicate.json()["detail"]
+    body = {"name": "Ana", "email": "ana@example.com", "password": "12345678"}
+    # Accounts and businesses come from a Tenantly admin or a business's owner, never the public.
+    assert post(client, "/auth/signup", body).status_code == 404
+    account(client, "Ana Solís", "Ana@Example.com")
+    session = post(client, "/auth/login", {"email": "ana@example.com", "password": "correct-horse"}).json()["token"]
+    assert post(client, "/tenants", {"name": "Mine", "locationName": "Main"}, session).status_code in {404, 405}
+    with pytest.raises(ConflictError, match="already exists"):
+        accounts.create_account("Ana", "ana@example.com", "12345678")
     wrong = post(client, "/auth/login", {"email": "ana@example.com", "password": "nope-nope"})
     assert wrong.status_code == 401
     ok = post(client, "/auth/login", {"email": "ANA@example.com", "password": "correct-horse"})
@@ -61,7 +71,7 @@ def test_signup_login_and_errors_read_for_people() -> None:
 
 def test_a_new_business_starts_empty_with_its_owner_and_first_location() -> None:
     client = Client()
-    session = signup(client, "Ana Solís", "ana@example.com")
+    session = account(client, "Ana Solís", "ana@example.com")
     assert get(client, "/me/workspaces", session).json() == []
     tenant = new_business(client, session)
     assert tenant["template"]["terms"]["customers"] == "Customers"
@@ -78,14 +88,15 @@ def test_a_new_business_starts_empty_with_its_owner_and_first_location() -> None
 
 def test_outsiders_are_refused_and_invites_need_their_code() -> None:
     client = Client()
-    owner = signup(client, "Ana", "ana@example.com")
+    owner = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, owner)
-    outsider = signup(client, "Eve", "eve@example.com")
+    outsider = account(client, "Eve", "eve@example.com")
     refused = post(client, f"/tenants/{tenant['slug']}/token", {}, outsider)
     assert refused.status_code == 403
 
     token = enter(client, owner, tenant["slug"])
     location = next(n for n in token["context"]["nodes"] if n["kind"] == "location")
+    account(client, "Priya", "priya@example.com")
     invited = post(
         client,
         "/tenant/members",
@@ -97,8 +108,8 @@ def test_outsiders_are_refused_and_invites_need_their_code() -> None:
     pending = get(client, "/tenant/members", token["token"]).json()
     assert {m["status"] for m in pending["direct"]} == {"active", "invited"}
 
-    # Owning the address isn't proven, so signing up with it alone joins nothing.
-    squatter = signup(client, "Priya?", "priya@example.com")
+    # Holding an account with that address isn't enough: joining takes the code.
+    squatter = post(client, "/auth/login", {"email": "priya@example.com", "password": "correct-horse"}).json()["token"]
     assert post(client, f"/tenants/{tenant['slug']}/token", {}, squatter).status_code == 403
     # Someone else holding the code can't redeem it either: it was sent to Priya's address.
     assert post(client, "/me/invites", {"invite": code}, outsider).json() == {"joined": False}
@@ -119,24 +130,30 @@ def test_outsiders_are_refused_and_invites_need_their_code() -> None:
 
 def test_nobody_grants_more_than_their_own_role() -> None:
     client = Client()
-    owner = signup(client, "Ana", "ana@example.com")
+    owner = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, owner)
     token = enter(client, owner, tenant["slug"])
     org = next(n for n in token["context"]["nodes"] if n["kind"] == "org")
-    code = post(
+    created = post(
         client,
         "/tenant/members",
-        {"email": "raj@example.com", "role": "regional_manager", "scopeId": org["id"]},
+        {
+            "email": "raj@example.com",
+            "role": "regional_manager",
+            "scopeId": org["id"],
+            "name": "Raj",
+            "password": "correct-horse",
+        },
         token["token"],
-    ).json()["invite"]
-    raj = post(
-        client, "/auth/signup", {"name": "Raj", "email": "raj@example.com", "password": "correct-horse", "invite": code}
-    ).json()["token"]
+    )
+    assert created.status_code == 200, created.content
+    raj = post(client, "/auth/login", {"email": "raj@example.com", "password": "correct-horse"}).json()["token"]
     manager = enter(client, raj, tenant["slug"])["token"]
     escalate = post(
         client, "/tenant/members", {"email": "raj2@example.com", "role": "admin", "scopeId": org["id"]}, manager
     )
     assert escalate.status_code == 403
+    account(client, "Lee", "lee@example.com")
     peer = post(
         client,
         "/tenant/members",
@@ -148,7 +165,7 @@ def test_nobody_grants_more_than_their_own_role() -> None:
 
 def test_tree_changes_are_audited_on_an_intact_chain() -> None:
     client = Client()
-    owner = signup(client, "Ana", "ana@example.com")
+    owner = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, owner)
     token = enter(client, owner, tenant["slug"])
     org = next(n for n in token["context"]["nodes"] if n["kind"] == "org")
@@ -172,7 +189,7 @@ def test_tree_changes_are_audited_on_an_intact_chain() -> None:
 
 def test_internal_audit_requires_the_internal_token() -> None:
     client = Client()
-    owner = signup(client, "Ana", "ana@example.com")
+    owner = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, owner)
     body = {
         "tenantId": tenant["id"],
@@ -245,13 +262,12 @@ def test_templates_are_stored_data_and_travel_in_the_tenant_token() -> None:
         close=17 * 60,
         policy_defaults={"booking.approval": True},
     )
-    session = signup(client, "Ana Solís", "ana@example.com")
-    missing = post(client, "/tenants", {"name": "Nope", "templateId": "bakery", "locationName": "Main"}, session)
-    assert missing.status_code == 422
-    short = post(client, "/tenants", {"name": "Smile Co", "templateId": "clinic", "locationName": "X"}, session)
-    assert "Name your first practice" in short.json()["detail"]
-    created = post(client, "/tenants", {"name": "Smile Co", "templateId": "clinic", "locationName": "Main"}, session)
-    tenant = created.json()
+    session = account(client, "Ana Solís", "ana@example.com")
+    with pytest.raises(InvalidError):
+        new_business(client, session, "Nope", template_id="bakery", location="Main")
+    with pytest.raises(InvalidError, match="Name your first practice"):
+        new_business(client, session, "Smile Co", template_id="clinic", location="X")
+    tenant = new_business(client, session, "Smile Co", template_id="clinic", location="Main")
     assert tenant["template"]["terms"]["chair"] == "Chair"
     assert tenant["hue"] == 20
 
@@ -270,7 +286,7 @@ def test_templates_are_stored_data_and_travel_in_the_tenant_token() -> None:
 
 def test_a_location_keeps_its_own_time_zone_and_hours_in_the_token() -> None:
     client = Client()
-    owner = signup(client, "Ana", "ana@example.com")
+    owner = account(client, "Ana", "ana@example.com")
     tenant = new_business(client, owner)
     token = enter(client, owner, tenant["slug"])["token"]
     claims = verify(token)
@@ -299,6 +315,32 @@ def test_a_location_keeps_its_own_time_zone_and_hours_in_the_token() -> None:
 
     assert patch(location.id, {"resetHours": True}).status_code == 200
     assert verify(enter(client, owner, tenant["slug"])["token"]).hours(location.id) == (8 * 60, 20 * 60)
+
+
+def test_a_location_has_an_address_and_a_pin_on_the_map() -> None:
+    client = Client()
+    owner = account(client, "Ana", "ana@example.com")
+    tenant = new_business(client, owner)
+    entered = enter(client, owner, tenant["slug"])
+    token = entered["token"]
+    location = next(n for n in entered["context"]["nodes"] if n["kind"] == "location")
+    org = next(n for n in entered["context"]["nodes"] if n["kind"] == "org")
+    assert (location["address"], location["pin"]) == ("", None)  # not on the map until someone places it
+
+    def patch(node_id: str, body: dict[str, Any]) -> Any:
+        return client.patch(
+            f"/tenant/nodes/{node_id}", body, content_type="application/json", HTTP_AUTHORIZATION=f"Bearer {token}"
+        )
+
+    assert patch(org["id"], {"lat": 40.7, "lng": -74.0}).status_code == 422  # only locations sit on the map
+    assert patch(location["id"], {"lat": 91, "lng": 0}).status_code == 422
+    saved = patch(location["id"], {"address": " 15 W 18th St, New York ", "lat": 40.7387, "lng": -73.9926})
+    assert saved.status_code == 200, saved.content
+    assert saved.json()["address"] == "15 W 18th St, New York"
+    assert saved.json()["pin"] == [40.7387, -73.9926]
+
+    cleared = patch(location["id"], {"clearPin": True})
+    assert (cleared.json()["address"], cleared.json()["pin"]) == ("15 W 18th St, New York", None)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -340,16 +382,16 @@ def test_template_migration_types_fields_and_turns_the_waiver_into_a_document() 
 
 def test_people_read_errors_and_labels_in_their_language() -> None:
     client = Client()
-    session = signup(client, "Ana Solís", "ana@example.com")
+    session = account(client, "Ana Solís", "ana@example.com")
     spanish = {"HTTP_ACCEPT_LANGUAGE": "es"}
-    duplicate = client.post(
-        "/auth/signup",
-        {"name": "Ana", "email": "ana@example.com", "password": "12345678"},
+    wrong = client.post(
+        "/auth/login",
+        {"email": "ana@example.com", "password": "nope-nope"},
         content_type="application/json",
         **spanish,
     )
-    assert duplicate.status_code == 409
-    assert duplicate.json()["detail"] == "Ya existe una cuenta con este correo — mejor inicia sesión"
+    assert wrong.status_code == 401
+    assert wrong.json()["detail"] == "El correo o la contraseña no son correctos"
     # Shared errors (common/) are translated too.
     expired = client.get("/tenant/roles", HTTP_AUTHORIZATION="Bearer nope", **spanish)
     assert expired.json()["detail"] == "Tu sesión expiró — vuelve a iniciar sesión"
