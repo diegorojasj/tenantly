@@ -4,7 +4,7 @@
 // through as safe errors; anything else becomes a generic, honest message.
 import 'server-only';
 
-import { markSafeError } from '@solidjs/web';
+import { getRequestEvent, markSafeError } from '@solidjs/web';
 import { env } from 'virtual:env/server';
 
 import { locale, t } from '../lib/i18n';
@@ -30,13 +30,24 @@ function base() {
 }
 
 type Query = Record<string, string | number | null | undefined>;
+type Options = { method?: string; token?: string; body?: unknown; query?: Query; headers?: Record<string, string> };
 
-export async function api<T>(
-  service: Service,
-  path: string,
-  options: { method?: string; token?: string; body?: unknown; query?: Query } = {},
-): Promise<T> {
-  const url = new URL(`${base()}/${service}${path}`);
+export async function api<T>(service: Service, path: string, options: Options = {}): Promise<T> {
+  return send<T>(new URL(`${base()}/${service}${path}`), service, options);
+}
+
+/**
+ * Identity's admin routes, on the proxy's admin side (ADMIN_API_URL) — the only place
+ * they're served. The browser's address goes along for the admin audit log.
+ */
+export async function adminApi<T>(path: string, options: Options = {}): Promise<T> {
+  const root = (env.ADMIN_API_URL ?? 'http://admin.localhost:8080/api').replace(/\/$/, '');
+  const client = getRequestEvent()?.request.headers.get('x-real-ip');
+  const headers = { ...(client ? { 'x-client-ip': client } : {}), ...options.headers };
+  return send<T>(new URL(`${root}/identity/admin${path}`), 'identity', { ...options, headers });
+}
+
+async function send<T>(url: URL, service: Service, options: Options): Promise<T> {
   for (const [key, value] of Object.entries(options.query ?? {})) {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
   }
@@ -50,6 +61,7 @@ export async function api<T>(
         'accept-language': locale(),
         ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
+        ...options.headers,
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
