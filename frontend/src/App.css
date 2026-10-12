@@ -1295,112 +1295,424 @@ a.lens-step:hover {
   gap: 6px;
 }
 
-.containment {
-  padding: 14px;
+/* -------------------------------------------------------------- locations */
+
+/* The Locations page: a map beside a grouped directory; the map stays in view while the list scrolls. */
+.sites {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 1fr);
+  align-items: start;
+  gap: 20px;
 }
 
-.org-frame,
-.region-frame {
-  border: 1.5px dashed var(--line-strong);
-  border-radius: 14px;
+.sites-map {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: clamp(420px, calc(100vh - 140px), 760px);
 }
 
-.org-frame {
-  padding: 12px;
+.sites-map-empty {
+  margin: 10px 2px 0;
 }
 
-.org-frame.focused,
-.region-frame.focused {
-  border-style: solid;
-  border-color: var(--accent);
-  background: oklch(from var(--accent) l c h / 4%);
+.site-map {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
 }
 
-.frame-label {
-  margin: 0 4px 10px;
+.site-map-canvas {
+  position: absolute;
+  inset: 0;
+  font: inherit;
+  background: var(--sunken);
+}
+
+.site-map.placing .site-map-canvas {
+  cursor: crosshair;
+}
+
+.site-map .leaflet-tile-pane {
+  filter: saturate(0.55) contrast(0.95);
+}
+
+/* Raster tiles have no dark style: invert them, then turn the hues back. */
+@media (prefers-color-scheme: dark) {
+  .site-map .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) saturate(0.4) brightness(0.85) contrast(0.9);
+  }
+}
+
+.site-map-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
   font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+}
+
+.site-map-fit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 500;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.site-map .leaflet-control-zoom a {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.site-map .leaflet-control-attribution {
+  background: oklch(from var(--surface) l c h / 85%);
+  color: var(--text-2);
+}
+
+.site-map .leaflet-control-attribution a {
+  color: var(--text-2);
+}
+
+/* Pins: a dot ringed in white, coloured by live state; the selected one grows and halos. */
+.site-pin {
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+}
+
+.pin {
+  width: 14px;
+  height: 14px;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 1px 4px oklch(0% 0 0 / 35%);
+  transition: transform 120ms;
+}
+
+.pin-closed {
+  background: var(--text-3);
+}
+
+.pin-paused {
+  background: repeating-linear-gradient(-45deg, var(--muted-dot) 0 3px, var(--text-3) 3px 6px);
+}
+
+.pin.selected {
+  transform: scale(1.45);
+  box-shadow: 0 0 0 5px oklch(from var(--accent) l c h / 30%), 0 1px 4px oklch(0% 0 0 / 35%);
+}
+
+.site-pin:hover .pin {
+  transform: scale(1.25);
+}
+
+.site-tip {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: 12.5px var(--font);
+  box-shadow: var(--shadow);
+}
+
+.site-tip::before {
+  display: none;
+}
+
+.site-tip .mono {
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+
+/* The directory. */
+.sites-list .filter input {
+  width: 15rem;
+}
+
+.site-groups {
+  display: grid;
+  gap: 14px;
+}
+
+.site-groups.nested {
+  margin: 8px 0 0 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+}
+
+.site-group {
+  display: grid;
+  gap: 6px;
+}
+
+.site-group.locked {
+  opacity: 0.6;
+}
+
+.site-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 4px 4px;
+  font-size: 13px;
+}
+
+.site-group-level {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.site-group-name {
   font-weight: 650;
 }
 
-.frame-label a:hover {
+a.site-group-name:hover {
   color: var(--accent);
 }
 
-.regions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.site-group.focused > .site-group-head .site-group-name {
+  color: var(--accent);
 }
 
-.region-frame {
-  flex-basis: 260px;
-  padding: 10px;
-}
-
-.region-frame.locked {
-  opacity: 0.55;
-}
-
-.tiles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.tile {
-  display: grid;
-  align-content: space-between;
-  gap: 4px;
-  flex-basis: 120px;
-  min-height: 92px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  transition: border-color 120ms, transform 120ms, box-shadow 120ms;
-}
-
-a.tile:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
-}
-
-.tile[data-focused] {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.tile[data-status='degraded'] {
-  background: linear-gradient(135deg, var(--warn-soft), var(--surface) 60%);
-}
-
-.tile[data-status='paused'] {
-  background: repeating-linear-gradient(-45deg, var(--surface) 0 8px, var(--sunken) 8px 16px);
-}
-
-.tile.locked {
-  color: var(--text-3);
+.site-group-count {
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: 999px;
   background: var(--sunken);
-  cursor: not-allowed;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
-.tile-code {
-  font: 600 10.5px var(--mono);
+.site-empty {
+  margin: 0;
+  padding: 4px;
+}
+
+.site {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  transition: border-color 120ms, box-shadow 120ms;
+}
+
+.site:hover {
+  border-color: var(--line-strong);
+}
+
+.site.focused {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.site.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+}
+
+.site[data-status='paused'] .site-name {
+  color: var(--text-2);
+}
+
+.site.locked .site-name {
   color: var(--text-3);
 }
 
-.tile-name {
-  font-weight: 650;
-  line-height: 1.25;
+.site-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.tile-foot {
+.site-row > .icon {
+  color: var(--text-3);
+  transition: transform 120ms;
+}
+
+.site.selected .site-row > .icon {
+  transform: rotate(90deg);
+}
+
+.site-main,
+.site-side {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.site-side {
+  justify-items: end;
+  text-align: right;
+}
+
+.site-name {
+  overflow: hidden;
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.site-code {
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.site-sub {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  overflow: hidden;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.site-flag {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.site-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.site-state.is-closed,
+.site-state.is-paused {
+  color: var(--text-2);
+}
+
+.site-local {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.site-detail {
+  display: grid;
+  gap: 12px;
+  padding: 4px 12px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.site-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 10px 0 0;
+}
+
+.site-facts dt {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.site-facts dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.site-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.site-actions .inline-form input[type='text'] {
+  min-width: 0;
+  width: 13rem;
+}
+
+.site-detail .hint {
+  margin: 0;
+}
+
+@media (max-width: 1080px) {
+  .sites {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sites-map {
+    position: static;
+    height: 380px;
+  }
+}
+
+@media (max-width: 560px) {
+  .sites-list .panel-head {
+    flex-wrap: wrap;
+  }
+
+  .sites-list .filter,
+  .sites-list .filter input {
+    width: 100%;
+  }
+
+  .site-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .site-side {
+    grid-column: 1;
+    grid-row: 2;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .site-row > .icon {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .site-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---------------------------------------------------------------- tables */
@@ -1970,6 +2282,90 @@ input[type='text']:focus {
   font-weight: 700;
 }
 
+.usage-meter {
+  grid-template-columns: auto minmax(0, 1fr) 3.5rem;
+  border-bottom: 0;
+}
+
+/* Used of included, with the 80% mark the default alert sits on. */
+.usage-bar {
+  position: relative;
+  height: 8px;
+  margin: 4px 0 12px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.usage-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.usage-fill.hot {
+  background: var(--warn);
+}
+
+.usage-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text-2);
+}
+
+.notice-list,
+.change-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notice-list li,
+.change-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.notice-list li > span:first-child,
+.change-list li > span:first-child {
+  flex: 1;
+}
+
+.notice-list li.dim {
+  opacity: 0.6;
+}
+
+.banner p {
+  margin: 0 0 6px;
+}
+
+.banner .row {
+  gap: 8px;
+}
+
+.billing-banner {
+  margin: 12px 24px 0;
+}
+
+.subhead {
+  margin: 20px 0 6px;
+  font-size: 14px;
+}
+
+.invoice-detail {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
 /* ------------------------------------------------------------ operate */
 
 .rail-label.nav-group {
@@ -2484,6 +2880,64 @@ input[type='text']:focus {
 
 .intake p {
   margin: 0;
+}
+
+.pay-box {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.pay-box h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.pay-box p {
+  margin: 0;
+}
+
+.pay-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.pay-list:empty {
+  display: none;
+}
+
+.pay-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.pay-list li.dim {
+  opacity: 0.55;
+}
+
+.pay-list .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 6px;
+  text-align: left;
+}
+
+.pay-list .row-actions:empty {
+  display: none;
 }
 
 .seat-bar {
@@ -3297,22 +3751,6 @@ td.warn {
   min-width: 14rem;
 }
 
-.tile-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
-}
-
-.tile-actions .inline-form input[type='text'] {
-  min-width: 0;
-  width: 9rem;
-}
-
-.region-frame.loose {
-  border-style: dashed;
-}
-
 .scope-leaf {
   padding-left: 22px;
 }
@@ -3324,15 +3762,6 @@ td.warn {
 
 .create-business {
   margin-top: 18px;
-}
-
-/* Groups nest as deep as the template's levels go. */
-.regions.nested {
-  margin-top: 10px;
-}
-
-.regions.nested .region-frame {
-  flex-basis: 220px;
 }
 
 /* White-label logo (Business settings → Branding), left of the business name. */
@@ -3378,4 +3807,295 @@ td.warn {
   width: 48px;
   height: 48px;
   border: 1px solid var(--line);
+}
+
+/* Tenantly admin console (/admin on the admin host): owners, subscriptions, plans, policy, log. */
+.admin-shell {
+  min-height: 100vh;
+}
+
+.admin-shell > .page {
+  margin: 0 auto;
+}
+
+.admin-top .spacer {
+  flex: 1;
+}
+
+.admin-title {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.table tr.admin-expand > td {
+  padding: 4px 12px 16px 28px;
+  background: var(--sunken);
+}
+
+.admin-businesses {
+  background: var(--surface);
+}
+
+.admin-pager {
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.admin-inline {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.admin-inline input {
+  min-width: 180px;
+}
+
+.admin-form {
+  max-width: 760px;
+}
+
+.admin-window {
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-window .pill {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-status {
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.admin-status .grow {
+  flex: 1;
+}
+
+.admin-policy {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.admin-diff {
+  max-width: 420px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .admin-inline {
+    flex-wrap: wrap;
+  }
+
+  .admin-window .muted {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- invoice --
+   The invoice view is the document itself: on screen a paper-like sheet,
+   in print the only thing on the page. */
+
+.invoice-page {
+  max-width: 860px;
+}
+
+.invoice-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.invoice-bar .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.invoice-doc {
+  display: grid;
+  gap: 28px;
+  padding: clamp(20px, 5vw, 48px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.inv-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.inv-logo {
+  display: block;
+  max-width: 160px;
+  max-height: 56px;
+  margin-bottom: 8px;
+  object-fit: contain;
+}
+
+.inv-business {
+  display: block;
+  font-size: 18px;
+}
+
+.inv-title {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.inv-title h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 560px) {
+  .inv-title {
+    justify-items: start;
+  }
+}
+
+.inv-stamp {
+  padding: 2px 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.inv-stamp-paid {
+  color: oklch(52% 0.13 150);
+}
+
+.inv-stamp-open {
+  color: oklch(58% 0.14 70);
+}
+
+.inv-stamp-void {
+  color: oklch(55% 0.02 0);
+}
+
+.inv-void .inv-lines,
+.inv-void .inv-totals {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.inv-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.inv-meta .eyebrow {
+  margin: 0 0 4px;
+}
+
+.inv-facts,
+.inv-totals {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-content: start;
+  gap: 4px 0;
+  margin: 0;
+}
+
+.inv-facts dt,
+.inv-totals dt {
+  padding-right: 24px;
+}
+
+.inv-facts dt,
+.inv-totals dt {
+  color: var(--text-2);
+}
+
+.inv-facts dd,
+.inv-totals dd {
+  margin: 0;
+  text-align: right;
+}
+
+.inv-totals {
+  justify-self: end;
+  min-width: min(100%, 280px);
+}
+
+.inv-totals .inv-total {
+  padding-top: 8px;
+  border-top: 1px solid var(--line-strong);
+  color: inherit;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.inv-foot p {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  /* On the invoice page only the document prints: every branch of the page
+     that doesn't lead to it (rail, top bar, toasts, devtools) is dropped,
+     and the shell's grid and frame fall away (body's own children too: the
+     dev-only Solid devtools overlay mounts there). Other pages print as they are. */
+  body:has(.invoice-doc) > :not(:has(.invoice-doc)),
+  body:has(.invoice-doc) :has(.invoice-doc) > :not(:has(.invoice-doc), .invoice-doc) {
+    display: none !important;
+  }
+
+  body:has(.invoice-doc),
+  body:has(.invoice-doc) :has(.invoice-doc) {
+    display: block;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    animation: none;
+  }
+
+  .stage:has(.invoice-doc)::before,
+  .stage:has(.invoice-doc)::after {
+    display: none;
+  }
+
+  .invoice-doc {
+    padding: 0;
+    border: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .invoice-doc .muted,
+  .inv-facts dt,
+  .inv-totals dt {
+    color: #444;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .inv-lines tr {
+    break-inside: avoid;
+  }
 }
