@@ -18,8 +18,20 @@ export default {
     // Where the services live: the proxy's /api prefix. Server-side only —
     // the browser never calls a service directly.
     API_URL: v.optional(v.pipe(v.string(), v.url()), 'http://localhost:8080/api'),
+    // The Tenantly admin console's host: on it the app serves only the console, and the
+    // console only on it (src/server/host.ts). Without a port.
+    ADMIN_HOST: v.optional(v.pipe(v.string(), v.minLength(1)), 'admin.localhost'),
+    // The proxy's admin side: the only place the admin API is served.
+    ADMIN_API_URL: v.optional(v.pipe(v.string(), v.url()), 'http://admin.localhost:8080/api'),
   },
   client: {
     VITE_APP_NAME: v.optional(v.pipe(v.string(), v.minLength(1)), 'Tenantly'),
+    // The Locations map's raster tiles ({z}/{x}/{y}, optional {s} and {r}) and their credit.
+    // OpenStreetMap's own tiles suit development only: point production at a tile provider.
+    VITE_MAP_TILES: v.optional(v.pipe(v.string(), v.minLength(1)), 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+    VITE_MAP_ATTRIBUTION: v.optional(
+      v.pipe(v.string(), v.minLength(1)),
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    ),
   },
 };
