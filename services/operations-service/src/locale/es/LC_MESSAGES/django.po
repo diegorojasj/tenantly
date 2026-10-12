@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-11 17:42+0000\n"
+"POT-Creation-Date: 2026-10-12 10:27+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -120,48 +120,54 @@ msgstr "Primero elige qué reservar."
 #: services/bookings.py:280
 #, python-format
 msgid "Nothing free that day for %(names)s. Try another day or person."
-msgstr "No hay nada libre ese día para %(names)s. Prueba otro día u otra persona."
+msgstr ""
+"No hay nada libre ese día para %(names)s. Prueba otro día u otra persona."
 
 #: services/bookings.py:282
 msgid "Nothing free that day. Try another day."
 msgstr "No hay nada libre ese día. Prueba otro día."
 
-#: services/bookings.py:377
+#: services/bookings.py:379
 #, python-format
 msgid "on %(day)s at %(time)s"
 msgstr "el %(day)s a las %(time)s"
 
-#: services/bookings.py:407
+#: services/bookings.py:410
 msgid "That isn't a class session"
 msgstr "Eso no es una sesión de clase"
 
-#: services/bookings.py:410
+#: services/bookings.py:413
 msgid "That session is no longer open"
 msgstr "Esa sesión ya no está abierta"
 
-#: services/bookings.py:416
+#: services/bookings.py:419
 #, python-format
 msgid "%(customer)s is already booked"
 msgstr "%(customer)s ya tiene reserva"
 
-#: services/bookings.py:419
+#: services/bookings.py:422
 #, python-format
 msgid "%(offering)s is full"
 msgstr "%(offering)s está lleno"
 
-#: services/bookings.py:469
+#: services/bookings.py:484
 #, python-format
 msgid "A %(current)s booking can't become %(next)s"
 msgstr "Una reserva en estado “%(current)s” no puede pasar a “%(next)s”"
 
-#: services/bookings.py:479
+#: services/bookings.py:494
 #, python-format
 msgid "Wait until %(n)s minutes after the start before marking a no-show"
-msgstr "Espera %(n)s minutos después del inicio antes de marcar una inasistencia"
+msgstr ""
+"Espera %(n)s minutos después del inicio antes de marcar una inasistencia"
 
 #: services/catalog.py:83
-msgid "The catalog is shared by every location — ask someone who manages the whole business"
-msgstr "El catálogo es compartido por todas las sedes — pídeselo a alguien que gestione todo el negocio"
+msgid ""
+"The catalog is shared by every location — ask someone who manages the whole "
+"business"
+msgstr ""
+"El catálogo es compartido por todas las sedes — pídeselo a alguien que "
+"gestione todo el negocio"
 
 #: services/catalog.py:92
 #, python-format
@@ -189,18 +195,22 @@ msgstr "La capacidad debe ser al menos 1"
 
 #: services/catalog.py:118
 msgid "Only fixed-length sessions can be shared by several customers"
-msgstr "Solo las sesiones de duración fija pueden compartirse entre varios clientes"
+msgstr ""
+"Solo las sesiones de duración fija pueden compartirse entre varios clientes"
 
 #: services/catalog.py:130 services/parties.py:58
 #, python-format
 msgid "%(business)s businesses have no subject type '%(type)s'"
-msgstr "Los negocios de tipo %(business)s no tienen el tipo de sujeto “%(type)s”"
+msgstr ""
+"Los negocios de tipo %(business)s no tienen el tipo de sujeto “%(type)s”"
 
 #: services/catalog.py:136
 msgid "Sessions several customers share can't each name a subject"
-msgstr "Las sesiones compartidas por varios clientes no pueden indicar un sujeto cada una"
+msgstr ""
+"Las sesiones compartidas por varios clientes no pueden indicar un sujeto "
+"cada una"
 
-#: services/catalog.py:154 services/customers.py:170 services/resources.py:88
+#: services/catalog.py:154 services/customers.py:171 services/resources.py:88
 msgid "Enter a name"
 msgstr "Ingresa un nombre"
 
@@ -232,7 +242,8 @@ msgstr "Ese cliente está fuera de tu alcance"
 #: services/documents.py:113
 #, python-format
 msgid "%(customer)s needs a valid %(documents)s on file before booking"
-msgstr "%(customer)s necesita %(documents)s vigente registrado antes de reservar"
+msgstr ""
+"%(customer)s necesita %(documents)s vigente registrado antes de reservar"
 
 #: services/documents.py:133
 msgid "Unknown document type"
@@ -297,7 +308,8 @@ msgstr "%(field)s debe ser una de estas opciones: %(options)s"
 #: services/fulfilment.py:85 services/resources.py:80
 #, python-format
 msgid "%(business)s businesses have no resource type '%(type)s'"
-msgstr "Los negocios de tipo %(business)s no tienen el tipo de recurso “%(type)s”"
+msgstr ""
+"Los negocios de tipo %(business)s no tienen el tipo de recurso “%(type)s”"
 
 #: services/fulfilment.py:94
 #, python-format
@@ -355,7 +367,8 @@ msgstr "a esa hora"
 #: services/parties.py:56
 #, python-format
 msgid "%(business)s businesses have no account type '%(type)s'"
-msgstr "Los negocios de tipo %(business)s no tienen el tipo de cuenta “%(type)s”"
+msgstr ""
+"Los negocios de tipo %(business)s no tienen el tipo de cuenta “%(type)s”"
 
 #: services/parties.py:144
 msgid "That account is outside your scope"
@@ -384,15 +397,15 @@ msgstr "sujeto"
 msgid "Pick which of %(customer)s's %(subject)ss it is for"
 msgstr "Elige a qué %(subject)s de %(customer)s corresponde"
 
-#: services/parties.py:235
+#: services/parties.py:236
 msgid "Pick an active plan"
 msgstr "Elige un plan activo"
 
-#: services/parties.py:278
+#: services/parties.py:280
 msgid "That plan isn't active"
 msgstr "Ese plan no está activo"
 
-#: services/parties.py:301
+#: services/parties.py:303
 #, python-format
 msgid "%(customer)s's pack has no credits left"
 msgstr "Al paquete de %(customer)s no le quedan créditos"
@@ -419,7 +432,8 @@ msgstr "Aprobar reservas nuevas"
 
 #: services/policies.py:44
 msgid "New bookings start as requests until the desk confirms them."
-msgstr "Las reservas nuevas quedan como solicitudes hasta que recepción las confirme."
+msgstr ""
+"Las reservas nuevas quedan como solicitudes hasta que recepción las confirme."
 
 #: services/policies.py:48
 msgid "Booking window"
@@ -443,7 +457,8 @@ msgstr "h antes"
 
 #: services/policies.py:55
 msgid "Later cancellations are charged the no-show fee."
-msgstr "A las cancelaciones posteriores se les cobra la tarifa por inasistencia."
+msgstr ""
+"A las cancelaciones posteriores se les cobra la tarifa por inasistencia."
 
 #: services/policies.py:58
 msgid "Check-in grace"
@@ -455,7 +470,8 @@ msgstr "min"
 
 #: services/policies.py:60
 msgid "Minutes after start before a booking can be marked no-show."
-msgstr "Minutos tras el inicio antes de poder marcar una reserva como inasistencia."
+msgstr ""
+"Minutos tras el inicio antes de poder marcar una reserva como inasistencia."
 
 #: services/policies.py:64
 msgid "Deposit at booking"
@@ -554,12 +570,20 @@ msgstr "Obligatorio para reservar"
 
 #: services/policies.py:127
 #, python-format
-msgid "Remind flags customers without a valid one; Required to book refuses the booking. Valid for %(n)s days."
-msgstr "Recordar marca a los clientes que no tienen uno vigente; Obligatorio para reservar rechaza la reserva. Válido por %(n)s días."
+msgid ""
+"Remind flags customers without a valid one; Required to book refuses the "
+"booking. Valid for %(n)s days."
+msgstr ""
+"Recordar marca a los clientes que no tienen uno vigente; Obligatorio para "
+"reservar rechaza la reserva. Válido por %(n)s días."
 
 #: services/policies.py:130
-msgid "Remind flags customers without a valid one; Required to book refuses the booking."
-msgstr "Recordar marca a los clientes que no tienen uno vigente; Obligatorio para reservar rechaza la reserva."
+msgid ""
+"Remind flags customers without a valid one; Required to book refuses the "
+"booking."
+msgstr ""
+"Recordar marca a los clientes que no tienen uno vigente; Obligatorio para "
+"reservar rechaza la reserva."
 
 #: services/policies.py:135
 #, python-format
