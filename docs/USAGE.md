@@ -26,7 +26,14 @@ These are the roles a business starts with (from its template). A business can r
 re-scope them, or add its own (“Night desk”, “Franchisee”) on **Team & roles**: pick what the
 role can do from the permissions you hold yourself. You can't hand out more than your own
 role can do, edit your own role, or touch the Owner role; a role someone holds can't be
-removed until they have another.
+removed until they have another. Managing the Tenantly plan is the owner's alone: no other
+role can be given it.
+
+**Accounts.** Nobody signs up. Tenantly creates each owner's account with their business (admin
+console) and hands them a first password. On **Team & roles** the owner adds people: someone
+with no Tenantly account gets one there (name and first password), on the team at once;
+someone who already has one gets an invite link. Everyone on the team works under the
+business's Tenantly plan.
 
 ---
 

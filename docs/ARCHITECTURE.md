@@ -9,6 +9,10 @@
                                  ├──► /api/operations/ → operations (Django) ─┼─► postgres (one DB each)
                                  └──► /api/billing/    → billing    (Django) ─┘
                                       /api/*/internal/ → 404 (never exposed)
+                                      /admin, /api/identity/admin/ → 404 (admin host only)
+
+ admin.localhost:8080 ──► proxy ──►  /admin               → frontend (console only)
+                                └──► /api/identity/admin/ → identity /admin (admin tokens only)
 ```
 
 The browser only ever talks to the frontend. The frontend's server functions
@@ -22,7 +26,7 @@ internal network for `/internal/*` routes.
 |---|---|---|
 | **identity** | accounts, sessions, businesses (tenants) and their money, branding and SSO settings, the location tree, team & each business's roles, audit trail, the template registry | Issues tenant tokens. Business templates are stored rows (`Template` model, seeded by data migrations); permissions are code (`identity-service/src/types/roles.py`), roles are `Role` rows per business. |
 | **operations** | catalog, resources, customers and their accounts, subjects, subscriptions and documents, bookings, class attendance, policies | Today, Calendar and Insights are read models here. Raises money through billing, writes audit through identity. |
-| **billing** | charges (due / paid / refunded), customer invoices, revenue, the Tenantly plan's prices and usage | "Overdue" is derived on read from the age of a due charge. Reads the plan name (and a Custom plan's terms) from identity. |
+| **billing** | charges (due / paid / refunded), customer invoices, revenue, and the Tenantly plan: versioned prices, each business's subscription, billing periods, the usage ledger, Tenantly's invoices to businesses, Stripe | "Overdue" and a business's payment standing are derived on read. See [BILLING.md](./BILLING.md). |
 
 Each service is its own Django project with its own database, using the same
 layout: `config/` (settings, urls, wsgi) and `src/{models,schemas,services,controllers}`.
@@ -32,6 +36,13 @@ internal calls).
 
 ## Authentication and tenant isolation
 
+0. **Accounts** — there's no public sign-up. A Tenantly admin creates each
+   owner's account together with their first business and the plan it starts on
+   (admin console "New owner", `POST /admin/owners`, or `manage.py open_business`),
+   and opens any further business for them. The owner creates their team's
+   accounts (Team & roles, `POST /tenant/members` with a name and first password;
+   owner role only). Team accounts (`User.created_by`) work under the business's
+   Tenantly subscription and never have one of their own.
 1. **Sign in** — identity checks the password and returns an opaque session
    token (only its SHA-256 is stored). The frontend keeps it in a signed,
    HTTP-only cookie.
@@ -41,7 +52,8 @@ internal calls).
    the location tree, the rules of the business's template (see below) and its
    money settings (`money`: currency, tax rate and name, whether prices include tax).
    Identity refuses non-members.
-   - **Invites** carry a one-time code (only its hash is stored). Joining
+   - **Invites** are for people who already have an account (e.g. from another
+     business). They carry a one-time code (only its hash is stored). Joining
      needs the code *and* the invited email, since emails aren't verified.
      There's no email delivery yet, so the inviter copies the link
      (`/?invite=<code>`) and passes it on. Nobody can grant a role with
@@ -129,15 +141,64 @@ by id (`Tenant.template_id`).
   prices include tax, else added on top. Paying collects every charge on it; voiding
   releases them; a charge dropped by a cancellation re-totals (or voids) its open invoice;
   an invoiced charge can only be collected through its invoice.
-- **The Tenantly plan** — priced on consumption, never seats: customers charged and
-  payments raised this month. Prices and limits are billing's (`services/plans.py`, in USD):
-  Starter (50 customers / 500 payments), Growth (×2), Enterprise (×4), and Custom, agreed
-  per business. A month past its tier's limits is billed on the smallest tier that fits
-  (never below the chosen one) and starts over on the 1st; past Enterprise the page asks
-  for a Custom plan. `GET /plan` asks identity (`/internal/tenants/{id}/plan`) for the
-  chosen plan and a Custom plan's terms (price, optional limits). Tenantly sets them with
-  `PUT` on that route or `manage.py set_plan <slug> Custom --price 250 [--customers N]
-  [--payments N]` in identity; the change lands in the audit trail.
+- **The Tenantly plan** ([BILLING.md](./BILLING.md)) — priced on **active customers**, never
+  seats. A customer counts once a month when the business serves them (check-in or
+  completion, a class seat) or sells them a plan. Each tier is a base price plus included
+  customers plus a per-customer overage, and a month's total never passes the next tier's
+  price. Prices are immutable `PlanVersion` rows in billing. Billing owns each business's
+  subscription, its monthly periods (calendar months in UTC, 72-hour grace for late usage) and
+  Tenantly's invoices (`TNT-000001`), paid by Stripe card or recorded by staff. Operations
+  sends usage through the money outbox, in the same transaction as the booking change behind
+  it, and billing stores it as evidence and counts each customer once per period. Identity
+  puts the plan's name and the **payment standing** in the tenant token. An unpaid invoice
+  holds back new customers from day 14 and new bookings from day 30, and day 45 makes the
+  workspace read-only (`TenantClaims.allow`). Those days, payment terms, retention and the default
+  spend cap are a versioned `BillingPolicy` row Tenantly admins edit. Staff use the admin console,
+  or `manage.py set_plan` (identity) plus `mark_paid` and `grant` (billing). The `billing-cycle` container renews, invoices, charges
+  and chases.
+
+## Tenantly admin console
+
+Tenantly staff work in a separate console on a **separate host** (`ADMIN_HOST`, default
+`http://admin.localhost:8080`) with **separate accounts**: a `PlatformAdmin` in identity is never
+a `User`, never a member of a business, and is never deleted, only blocked.
+
+- **Access is a window, opened from the server.** `manage.py create_admin` (which opens the first
+  window) and `manage.py activate_admin` give an admin `ADMIN_WINDOW_MINUTES` (default 10) from
+  now, and each one sets a new password (`--password`, 12+ characters and not the current one, or a
+  generated one printed once), so a password never outlives its window; `manage.py block_admin`
+  ends it at once. There is no reactivation from the web. Every
+  sign-in and every admin request checks the window; one found past its end is flipped to
+  `blocked` there and then and logged (`manage.py expire_admins`, run every minute by the
+  `identity-admin-sweep` container, is housekeeping only).
+- **Admin tokens can't cross over.** They're HS256 JWTs signed with `ADMIN_JWT_SECRET` (never
+  `JWT_SECRET`), audience `tenantly-admin`, `typ: admin`, valid for what's left of the window and
+  bound to it (a token from an earlier window is void). Tenant routes reject them (wrong key and
+  audience); admin routes reject sessions and tenant tokens.
+- **Host split, enforced twice.** The proxy serves `/admin` and `/api/identity/admin/*` only on
+  the admin host (404 elsewhere) and nothing of the workspaces there (`/t/*` and every other
+  `/api` are 404). The frontend is one build, gated by host in `src/middleware.ts` and in its
+  server functions (`src/server/host.ts`): the workspace session cookie (`session`) is neither
+  read nor written on the admin host, and the console's (`tenantly_admin`, host-only, Strict)
+  only there. The frontend's server reaches the admin API through the proxy's admin side
+  (`ADMIN_API_URL`, the `admin-proxy` network alias).
+- **Audit.** `AdminAuditEvent` is append-only: created, window opened, sign-in, sign-in refused,
+  expired, blocked, and every change with its target and what it looked like before and after.
+  The console shows it read-only.
+- **What admins do:** set a business **owner** (never an employee) `active`, `restricted`
+  (signs in and reads; the tenant token's `access: restricted` makes every service refuse writes,
+  `TenantAuth`) or `suspended` (no sign-in, sessions deleted); and, forwarded to billing's
+  `/internal` routes with the admin as `actor` after the window is checked again: a business's
+  plan, grants and manual payments, plan price lists and the billing policy
+  ([BILLING.md §12](./BILLING.md#tenantly-admin-console)).
+
+```bash
+podman compose exec identity python manage.py create_admin you@tenantly.dev --name "You"
+# no --password: a strong one is generated and printed once; the window is open for 10 minutes
+podman compose exec identity python manage.py activate_admin you@tenantly.dev   # new password (printed once), 10 more minutes
+podman compose exec identity python manage.py block_admin you@tenantly.dev      # end it now
+# then open http://admin.localhost:8080
+```
 
 ## Consistency
 
@@ -164,7 +225,9 @@ by id (`Tenant.template_id`).
 ```bash
 cp .env.example .env            # then replace every value (openssl rand -base64 32)
 podman compose --profile DEV up --build    # or: docker compose …
-# open http://localhost:8080 → create an account → create your business
+podman exec tenantly-identity-1 python manage.py open_business you@example.com "My business" \
+  --location "Main" --name "Your Name" --password '<8+ characters>'
+# open http://localhost:8080 → sign in (or create owners from the admin console)
 ```
 
 `--profile PROD` builds and runs the production frontend instead of the dev

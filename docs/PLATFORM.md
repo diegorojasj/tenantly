@@ -110,8 +110,8 @@ without custom code, the product becomes three layers:
    business's currency. Charges snapshot their currency. Billing issues simple customer
    invoices: a customer's open charges under a sequential number (`INV-0001`), with tax
    added on top or shown as the share already inside prices; paying one collects its charges,
-   voiding it releases them. Tenantly's own plan prices and limits moved from the frontend
-   into billing (`services/plans.py`, `GET /plan`, seats read from identity). Existing charges
+   voiding it releases them. Tenantly's own plan moved from the frontend into billing, and
+   is now usage-based subscriptions with versioned prices and invoices (see BILLING.md). Existing charges
    became USD, reversibly; with tax at 0 % nothing changes for fitness, rentals or field.
    Still open: currencies whose minor unit isn't two decimals, several tax rates (per
    offering or location), credit notes and partial payments, invoice PDFs and numbering
@@ -124,6 +124,13 @@ without custom code, the product becomes three layers:
     password. Still open: real SSO (SAML/OIDC login, just-in-time members, enforcing it),
     serving the workspace on the custom domain (TLS and routing), theme colours beyond the
     hue, and branded emails.
+
+**Platform operations.** Tenantly staff run the platform from a separate admin console on its own
+host (`admin.localhost:8080`), with admin accounts apart from tenant accounts, access windows
+opened only from the server (10 minutes by default), an append-only admin log, owner status
+(active / restricted / suspended), plan price lists published as new versions, and a versioned
+billing policy. See [ARCHITECTURE.md](./ARCHITECTURE.md#tenantly-admin-console) and
+[BILLING.md §12](./BILLING.md#tenantly-admin-console).
 
 Each step ships behind the current three templates first, so nothing regresses before new
 templates are added.
