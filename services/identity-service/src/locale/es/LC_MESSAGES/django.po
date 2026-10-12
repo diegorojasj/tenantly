@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-11 17:40+0000\n"
+"POT-Creation-Date: 2026-10-12 16:23+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -15,43 +15,78 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
-"1 : 2;\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
-#: controllers/internal.py:26 controllers/internal.py:48
+#: controllers/internal.py:26 services/admin.py:195 services/plan.py:31
 msgid "Unknown tenant"
 msgstr "Negocio desconocido"
 
-#: services/accounts.py:72
-msgid "Enter your name"
-msgstr "Escribe tu nombre"
+#: services/accounts.py:72 services/admins.py:133
+msgid "Enter their name"
+msgstr "Escribe su nombre"
 
-#: services/accounts.py:75 services/team.py:90
+#: services/accounts.py:75 services/admins.py:130 services/team.py:90
 msgid "Enter a valid email address"
 msgstr "Escribe un correo electrónico válido"
 
-#: services/accounts.py:78
+#: services/accounts.py:78 services/admins.py:136
 #, python-format
-msgid "Use at least %(n)s characters for your password"
-msgstr "Usa al menos %(n)s caracteres para tu contraseña"
+msgid "Use at least %(n)s characters for the password"
+msgstr "Usa al menos %(n)s caracteres para la contraseña"
 
 #: services/accounts.py:81
-msgid "An account with this email already exists — sign in instead"
-msgstr "Ya existe una cuenta con este correo — mejor inicia sesión"
+msgid "An account with this email already exists"
+msgstr "Ya existe una cuenta con este correo"
 
-#: services/accounts.py:92
+#: services/accounts.py:90
+msgid "This account is suspended. Contact Tenantly support to restore it"
+msgstr ""
+"Esta cuenta está suspendida. Contacta con el soporte de Tenantly para "
+"restablecerla"
+
+#: services/accounts.py:98 services/admins.py:225
 msgid "Email or password is incorrect"
 msgstr "El correo o la contraseña no son correctos"
 
-#: services/accounts.py:107
+#: services/accounts.py:115
 msgid "Sign in to continue"
 msgstr "Inicia sesión para continuar"
+
+#: services/admin.py:142
+msgid "No business owner with that id"
+msgstr "No hay ningún propietario de negocio con ese id"
+
+#: services/admin.py:225
+msgid "No such Tenantly invoice"
+msgstr "No existe esa factura de Tenantly"
+
+#: services/admin.py:247
+msgid "No such plan version"
+msgstr "Esa versión del plan no existe"
+
+#: services/admins.py:122
+msgid "Your admin access has ended"
+msgstr "Tu acceso de administración terminó"
+
+#: services/admins.py:143
+msgid "No Tenantly admin with that email"
+msgstr "No hay ninguna persona administradora de Tenantly con ese correo"
+
+#: services/admins.py:166
+msgid "There's already a Tenantly admin with that email: activate it instead"
+msgstr ""
+"Ya hay una persona administradora de Tenantly con ese correo: actívala en su "
+"lugar"
+
+#: services/admins.py:247
+msgid "Your admin session ended — sign in again"
+msgstr "Tu sesión de administración terminó — vuelve a iniciar sesión"
 
 #: services/business.py:66
 msgid "No such business"
 msgstr "Ese negocio no existe"
 
-#: services/business.py:98 services/tenants.py:156
+#: services/business.py:98 services/tenants.py:155
 msgid "Pick a currency"
 msgstr "Elige una moneda"
 
@@ -172,87 +207,91 @@ msgstr "Solo los propietarios pueden cambiar el rol de un propietario"
 msgid "location"
 msgstr "ubicación"
 
-#: services/tenants.py:71
+#: services/tenants.py:70
 msgid "Email & password"
 msgstr "Correo y contraseña"
 
-#: services/tenants.py:147
+#: services/tenants.py:146
 msgid "Unknown business template"
 msgstr "Plantilla de negocio desconocida"
 
-#: services/tenants.py:150
+#: services/tenants.py:149
 msgid "Enter the business name"
 msgstr "Escribe el nombre del negocio"
 
-#: services/tenants.py:153
+#: services/tenants.py:152
 #, python-format
 msgid "Name your first %(location)s"
 msgstr "Escribe el nombre de tu %(location)s inicial"
 
-#: services/tenants.py:192
+#: services/tenants.py:191
 msgid "Whole business"
 msgstr "Todo el negocio"
 
-#: services/tenants.py:214
+#: services/tenants.py:213
 #, python-format
 msgid "No workspace “%(slug)s”"
 msgstr "No hay ningún espacio de trabajo “%(slug)s”"
 
-#: services/tenants.py:218
+#: services/tenants.py:217
 #, python-format
 msgid "You are not a member of %(business)s"
 msgstr "No eres miembro de %(business)s"
 
-#: services/tenants.py:278
+#: services/tenants.py:284
 msgid "Area"
 msgstr "Zona"
 
-#: services/tenants.py:278
+#: services/tenants.py:284
 msgid "Areas"
 msgstr "Zonas"
 
-#: services/tenants.py:295
+#: services/tenants.py:301
 #, python-format
 msgid "Nothing groups under %(place)s: add a %(location)s"
 msgstr "Bajo %(place)s ya no van más grupos: agrega ahí cada %(location)s"
 
-#: services/tenants.py:302
+#: services/tenants.py:308
 #, python-format
 msgid "Pick one of the levels: %(levels)s"
 msgstr "Elige uno de los niveles: %(levels)s"
 
-#: services/tenants.py:306
+#: services/tenants.py:312
 #, python-format
 msgid "%(levels)s go above %(place)s, not inside it"
 msgstr "%(levels)s van por encima de %(place)s, no dentro"
 
-#: services/tenants.py:329
+#: services/tenants.py:335
 msgid "That place is outside your scope"
 msgstr "Ese lugar está fuera de tu alcance"
 
-#: services/tenants.py:344 services/tenants.py:417
+#: services/tenants.py:350 services/tenants.py:423
 msgid "Enter a name"
 msgstr "Escribe un nombre"
 
-#: services/tenants.py:348
+#: services/tenants.py:354
 msgid "Nothing goes inside a location: add it to the business or a group"
 msgstr "Dentro de una ubicación no va nada: agrégalo al negocio o a un grupo"
 
-#: services/tenants.py:386
+#: services/tenants.py:392
 msgid "Only locations have a time zone and opening hours"
 msgstr "Solo las ubicaciones tienen zona horaria y horario de atención"
 
-#: services/tenants.py:392
+#: services/tenants.py
+msgid "Only locations have an address and a place on the map"
+msgstr "Solo las ubicaciones tienen dirección y un lugar en el mapa"
+
+#: services/tenants.py:398
 #, python-format
 msgid "“%(tz)s” is not a time zone (use a name like America/New_York)"
 msgstr ""
 "“%(tz)s” no es una zona horaria (usa un nombre como America/Mexico_City)"
 
-#: services/tenants.py:401
+#: services/tenants.py:407
 msgid "Closing time must be after opening time"
 msgstr "La hora de cierre debe ser posterior a la de apertura"
 
-#: services/tenants.py:423
+#: services/tenants.py:429
 msgid "Only locations can be paused"
 msgstr "Solo se pueden pausar las ubicaciones"
 
@@ -296,54 +335,72 @@ msgstr "Administrar el plan de Tenantly"
 msgid "View audit trail"
 msgstr "Ver el registro de auditoría"
 
-#: types/roles.py:28
+#: types/roles.py:27
 msgid "View insights"
 msgstr "Ver estadísticas"
 
-#: types/roles.py:34
+#: types/roles.py:33
 msgid "Owner"
 msgstr "Propietario"
 
-#: types/roles.py:35
+#: types/roles.py:34
 msgid "Full control of the business, including billing."
 msgstr "Control total del negocio, incluida la facturación."
 
-#: types/roles.py:40
+#: types/roles.py:39
 msgid "Admin"
 msgstr "Administrador"
 
-#: types/roles.py:41
+#: types/roles.py:40
 msgid "Runs day-to-day operations; cannot change the Tenantly plan."
 msgstr "Lleva la operación diaria; no puede cambiar el plan de Tenantly."
 
-#: types/roles.py:57
+#: types/roles.py:55
 msgid "Area manager"
 msgstr "Gerente de zona"
 
-#: types/roles.py:58
+#: types/roles.py:56
 msgid "Runs bookings, catalog and policies for one area."
 msgstr "Lleva las reservas, el catálogo y las políticas de una zona."
 
-#: types/roles.py:71
+#: types/roles.py:69
 msgid "Front desk lead"
 msgstr "Jefe de recepción"
 
-#: types/roles.py:72
+#: types/roles.py:70
 msgid "Runs the desk of a single site: bookings, check-ins, payments."
 msgstr "Lleva la recepción de una sede: reservas, llegadas y pagos."
 
-#: types/roles.py:77
+#: types/roles.py:75
 msgid "Analyst"
 msgstr "Analista"
 
-#: types/roles.py:78
+#: types/roles.py:76
 msgid "Read-only access to bookings, numbers and settings."
 msgstr "Acceso de solo lectura a reservas, cifras y configuración."
 
-#: types/roles.py:83
+#: types/roles.py:81
 msgid "Auditor"
 msgstr "Auditor"
 
-#: types/roles.py:84
+#: types/roles.py:82
 msgid "Read-only access to the audit trail and billing."
 msgstr "Acceso de solo lectura al registro de auditoría y la facturación."
+
+msgid "%(email)s has no Tenantly account yet: only the owner can create one"
+msgstr "%(email)s aún no tiene cuenta en Tenantly: solo el propietario puede crearla"
+
+msgid "%(email)s has no Tenantly account yet: give their name and a first password"
+msgstr "%(email)s aún no tiene cuenta en Tenantly: indica su nombre y una primera contraseña"
+
+msgid "Only the owner manages the Tenantly plan: no other role can"
+msgstr "Solo el propietario gestiona el plan de Tenantly: ningún otro rol puede"
+
+msgid "Enter your name"
+msgstr "Escribe tu nombre"
+
+msgid "Use at least %(n)s characters for your password"
+msgstr "Usa al menos %(n)s caracteres para tu contraseña"
+
+msgid "Choose a password different from the current one"
+msgstr "Elige una contraseña distinta de la actual"
