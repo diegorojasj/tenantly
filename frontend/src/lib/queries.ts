@@ -7,10 +7,21 @@ import type { FetchQueryOptions } from '@tanstack/solid-query';
 import { QueryClient, queryOptions } from '@tanstack/solid-query';
 
 import { flightGateSkips, serverQueryFn } from './flight';
+import {
+  getAdminAudit,
+  getAdminOwners,
+  getAdminPlans,
+  getAdminPolicy,
+  getAdminSubscription,
+  getAdminViewer,
+} from './admin';
 import { getCurrentUser, getWorkspaces } from './auth';
 import {
   getAudit,
   getBilling,
+  getBillingHistory,
+  getCountedCustomers,
+  getPlanInvoice,
   getConfig,
   getMembers,
   getRoles,
@@ -20,6 +31,7 @@ import {
 import {
   getAccounts,
   getAvailability,
+  getBookingCharges,
   getBookingOptions,
   getBookings,
   getCalendar,
@@ -27,6 +39,7 @@ import {
   getCustomer,
   getCustomers,
   getInsights,
+  getInvoice,
   getInvoices,
   getPayments,
   getResources,
@@ -96,8 +109,16 @@ export const resourcesQuery = (org: string, scope = '') =>
 export const paymentsQuery = (org: string, scope = '') =>
   queryOptions({ queryKey: ['payments', org, scope], queryFn: () => getPayments(org, scope) });
 
+/** Keyed under `payments` so every money mutation refreshes the open booking panel too. */
+export const bookingChargesQuery = (org: string, bookingId: string) =>
+  queryOptions({ queryKey: ['payments', org, 'booking', bookingId], ...serverQueryFn(getBookingCharges, org, bookingId) });
+
 export const invoicesQuery = (org: string, scope = '') =>
   queryOptions({ queryKey: ['invoices', org, scope], queryFn: () => getInvoices(org, scope) });
+
+/** Keyed under `invoices`: paying or voiding it refreshes the open view. */
+export const invoiceQuery = (org: string, id: string) =>
+  queryOptions({ queryKey: ['invoices', org, 'one', id], queryFn: () => getInvoice(org, id) });
 
 export const insightsQuery = (org: string, scope: string, days: number) =>
   queryOptions({ queryKey: ['insights', org, scope, days], queryFn: () => getInsights(org, scope, days) });
@@ -119,6 +140,33 @@ export const auditQuery = (org: string, scope = '') =>
 
 export const billingQuery = (org: string) =>
   queryOptions({ queryKey: ['billing', org], queryFn: () => getBilling(org) });
+
+export const billingHistoryQuery = (org: string) =>
+  queryOptions({ queryKey: ['billing-history', org], queryFn: () => getBillingHistory(org) });
+
+/** `period` 0: the open one. */
+export const countedCustomersQuery = (org: string, period: number, offset: number) =>
+  queryOptions({ queryKey: ['billing', org, 'customers', period, offset], queryFn: () => getCountedCustomers(org, period, offset) });
+
+export const planInvoiceQuery = (org: string, invoiceId: string) =>
+  queryOptions({ queryKey: ['billing-history', org, 'invoice', invoiceId], queryFn: () => getPlanInvoice(org, invoiceId) });
+
+// The Tenantly admin console, on the admin host only; identity refuses anyone but an
+// admin inside their access window.
+export const adminViewerQuery = () => queryOptions({ queryKey: ['admin-viewer'], ...serverQueryFn(getAdminViewer) });
+
+export const adminPlansQuery = () => queryOptions({ queryKey: ['admin-plans'], ...serverQueryFn(getAdminPlans) });
+
+export const adminPolicyQuery = () => queryOptions({ queryKey: ['admin-policy'], ...serverQueryFn(getAdminPolicy) });
+
+export const adminAuditQuery = (offset: number) =>
+  queryOptions({ queryKey: ['admin-audit', offset], queryFn: () => getAdminAudit(offset) });
+
+export const adminOwnersQuery = (q: string, offset: number) =>
+  queryOptions({ queryKey: ['admin-owners', q, offset], queryFn: () => getAdminOwners(q, offset) });
+
+export const adminSubscriptionQuery = (tenantId: string) =>
+  queryOptions({ queryKey: ['admin-subscription', tenantId], queryFn: () => getAdminSubscription(tenantId) });
 
 // One factory for every side that needs a cache: the client boot
 // (src/App.tsx, one for the session), the per-request SSR setup

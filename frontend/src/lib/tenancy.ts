@@ -7,10 +7,12 @@ import { GET } from '@solidjs/web/server-functions';
 
 import { enterTenant, forgetTenant } from '../server/access';
 import { api } from '../server/api';
-import { t } from './i18n';
 import type {
   AuditEvent,
   Billing,
+  BillingHistory,
+  CountedCustomers,
+  PlanInvoice,
   BusinessSettings,
   Member,
   Permission,
@@ -37,6 +39,8 @@ export const getMembers = GET(async (slug: string, scope: string) => {
     inherited: Array<Member>;
     canAssign: boolean;
     canInvite: boolean;
+    /** Only the owner creates accounts; anyone who invites can invite an existing one. */
+    canCreateAccounts: boolean;
     viewerId: string;
     seats: number;
   }>('identity', '/tenant/members', { token: access.jwt, query: { scope: access.scopeId } });
@@ -45,7 +49,8 @@ export const getMembers = GET(async (slug: string, scope: string) => {
 export const getRoles = GET(async (slug: string) => {
   'use server';
   const access = await enterTenant(slug);
-  return api<{ roles: Array<Role>; permissions: Array<[Permission, string]>; canEdit: boolean }>(
+  // `ownerOnly`: permissions no role but the owner's can hold (the Tenantly plan is the owner's).
+  return api<{ roles: Array<Role>; permissions: Array<[Permission, string]>; ownerOnly: Array<Permission>; canEdit: boolean }>(
     'identity',
     '/tenant/roles',
     { token: access.jwt },
@@ -84,15 +89,27 @@ export async function deleteRole(input: { org: string; key: RoleId }) {
   return reload({ revalidate: ['roles', 'audit'] });
 }
 
-export async function inviteMember(input: { org: string; email: string; role: RoleId; scopeId: string }) {
+/**
+ * Someone with a Tenantly account gets a one-time invite code, returned once to the inviter,
+ * who passes the link on. Anyone else needs an account, which only the owner creates here with
+ * their name and first password; they join at once and work under the business's plan.
+ */
+export async function inviteMember(input: {
+  org: string;
+  email: string;
+  role: RoleId;
+  scopeId: string;
+  name?: string;
+  password?: string;
+}) {
   'use server';
-  const access = await enterTenant(input.org);
-  // The one-time code is returned once, to the inviter, who passes the link on.
-  const { invite } = await api<{ invite: string }>('identity', '/tenant/members', {
+  const { org, ...body } = input;
+  const access = await enterTenant(org);
+  const result = await api<{ invite?: string; account?: string }>('identity', '/tenant/members', {
     token: access.jwt,
-    body: { email: input.email, role: input.role, scopeId: input.scopeId },
+    body,
   });
-  return respond({ invite }, { revalidate: ['members', 'audit'] });
+  return respond(result, { revalidate: ['members', 'audit'] });
 }
 
 export async function changeRole(input: { org: string; memberId: string; role: RoleId }) {
@@ -134,6 +151,9 @@ export async function updateLocation(input: {
   /** Locations: IANA time zone and opening hours (minutes from local midnight). */
   tz?: string;
   hours?: [number, number] | null;
+  /** Locations: street address and map pin `[lat, lng]`; a null pin takes it off the map. */
+  address?: string;
+  pin?: [number, number] | null;
 }) {
   'use server';
   const access = await enterTenant(input.org);
@@ -147,6 +167,10 @@ export async function updateLocation(input: {
       open: input.hours?.[0] ?? null,
       close: input.hours?.[1] ?? null,
       resetHours: input.hours === null,
+      address: input.address ?? null,
+      lat: input.pin?.[0] ?? null,
+      lng: input.pin?.[1] ?? null,
+      clearPin: input.pin === null,
     },
   });
   forgetTenant(input.org);
@@ -213,21 +237,117 @@ export async function updateSettings(input: {
 
 // ------------------------------------------------------------------ plan --
 
-/** Prices, limits and the estimate come from billing; this only lays them out as meters. */
+// Billing prices everything; these only carry the token. Changes send the
+// revision the page showed (a stale page is refused, not obeyed) and an
+// Idempotency-Key naming the change *at that revision*, so a repeat of the same
+// change (a double click, a retry) finds the one already made instead of failing
+// on the revision it moved. The token is dropped after a change so its plan and
+// payment standing are fresh on the next request.
+
 export const getBilling = GET(async (slug: string): Promise<Billing> => {
   'use server';
   const access = await enterTenant(slug);
-  const { customers, payments, ...plan } = await api<
-    Omit<Billing, 'meters'> & {
-      customers: { used: number; limit: number | null };
-      payments: { used: number; limit: number | null };
-    }
-  >('billing', '/plan', { token: access.jwt });
-  return {
-    ...plan,
-    meters: [
-      { id: 'customers', label: t('billing.meterCustomers'), service: t('billing.serviceBilling'), ...customers, unit: t('billing.unitCustomers'), series: [] },
-      { id: 'payments', label: t('billing.meterPayments'), service: t('billing.serviceBilling'), ...payments, unit: t('billing.unitPayments'), series: [] },
-    ],
-  };
+  return api<Billing>('billing', '/plan', { token: access.jwt });
 });
+
+export const getBillingHistory = GET(async (slug: string): Promise<BillingHistory> => {
+  'use server';
+  const access = await enterTenant(slug);
+  return api<BillingHistory>('billing', '/plan/history', { token: access.jwt });
+});
+
+export const getCountedCustomers = GET(async (slug: string, period: number, offset: number): Promise<CountedCustomers> => {
+  'use server';
+  const access = await enterTenant(slug);
+  return api<CountedCustomers>('billing', '/plan/customers', {
+    token: access.jwt,
+    query: { period: period || undefined, offset },
+  });
+});
+
+export const getPlanInvoice = GET(async (slug: string, invoiceId: string): Promise<PlanInvoice> => {
+  'use server';
+  const access = await enterTenant(slug);
+  return api<PlanInvoice>('billing', `/plan/invoices/${encodeURIComponent(invoiceId)}`, { token: access.jwt });
+});
+
+const PLAN_KEYS = ['billing', 'billing-history', 'tenant', 'audit'];
+
+async function planWrite(
+  org: string,
+  path: string,
+  options: { key?: string; method?: string; body?: unknown; query?: Record<string, number> },
+) {
+  const access = await enterTenant(org);
+  await api('billing', path, {
+    token: access.jwt,
+    method: options.method ?? 'POST',
+    body: options.body ?? {},
+    query: options.query,
+    headers: options.key ? { 'idempotency-key': options.key } : undefined,
+  });
+  forgetTenant(org);
+}
+
+/** Upgrades apply now (prorated); downgrades wait for the renewal. Refused while the plan is ending. */
+export async function changePlan(input: { org: string; plan: string; revision: number }) {
+  'use server';
+  await planWrite(input.org, '/plan/change', {
+    key: `change:${input.plan}:${input.revision}`,
+    body: { plan: input.plan, revision: input.revision },
+  });
+  return reload({ revalidate: PLAN_KEYS });
+}
+
+/** Keep the current plan: drop the change waiting for the renewal (works on Custom and older price lists too). */
+export async function withdrawPlanChange(input: { org: string; revision: number }) {
+  'use server';
+  await planWrite(input.org, '/plan/withdraw', { key: `withdraw:${input.revision}`, query: { revision: input.revision } });
+  return reload({ revalidate: PLAN_KEYS });
+}
+
+export async function cancelPlan(input: { org: string; revision: number }) {
+  'use server';
+  await planWrite(input.org, '/plan/cancel', { key: `cancel:${input.revision}`, query: { revision: input.revision } });
+  return reload({ revalidate: PLAN_KEYS });
+}
+
+export async function resumePlan(input: { org: string; revision: number }) {
+  'use server';
+  await planWrite(input.org, '/plan/resume', { key: `resume:${input.revision}`, query: { revision: input.revision } });
+  return reload({ revalidate: PLAN_KEYS });
+}
+
+export async function updatePlanSettings(input: { org: string; spendCap: string | null; alertThresholds: Array<number> }) {
+  'use server';
+  await planWrite(input.org, '/plan/settings', {
+    method: 'PUT',
+    body: { spendCap: input.spendCap, alertThresholds: input.alertThresholds },
+  });
+  return reload({ revalidate: PLAN_KEYS });
+}
+
+/** Seven more days before an unpaid invoice escalates, once a year. */
+export async function extendPayment(input: { org: string; revision: number }) {
+  'use server';
+  await planWrite(input.org, '/plan/extension', { key: `extend:${input.revision}` });
+  return reload({ revalidate: PLAN_KEYS });
+}
+
+/** A Stripe Checkout page where the owner saves the card Tenantly charges; the browser goes there. */
+export async function startCardSetup(input: { org: string; returnUrl: string }) {
+  'use server';
+  const access = await enterTenant(input.org);
+  const { url } = await api<{ url: string }>('billing', '/plan/card', {
+    token: access.jwt,
+    body: { returnUrl: input.returnUrl },
+  });
+  return respond({ url }, { revalidate: [] });
+}
+
+export async function readBillingNotice(input: { org: string; id: number }) {
+  'use server';
+  const access = await enterTenant(input.org);
+  await api('billing', `/plan/notices/${input.id}/read`, { token: access.jwt, body: {} });
+  return reload({ revalidate: ['billing'] });
+}

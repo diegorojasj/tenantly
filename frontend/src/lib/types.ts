@@ -23,6 +23,10 @@ export interface ScopeNode {
   tz?: string;
   /** Locations: own opening hours `[open, close]`, minutes from local midnight; null = the template's. */
   hours?: [number, number] | null;
+  /** Locations: street address (empty until set). */
+  address?: string;
+  /** Locations: map pin `[lat, lng]` (WGS84); null = not on the map yet. */
+  pin?: [number, number] | null;
   headcount: number;
   /** False when the node sits outside the viewer's assigned scope. */
   reachable?: boolean;
@@ -237,7 +241,6 @@ export interface Tenant {
   template: Template;
   /** OKLCH hue that tints the whole workspace while it is open. */
   hue: number;
-  plan: PlanName;
   idp: string;
   residency: string;
   tenantKey: string;
@@ -277,6 +280,8 @@ export interface Viewer {
   email: string;
   title: string;
   initials: string;
+  /** Tenantly restricted the account: it signs in and reads, and changes nothing. */
+  restricted?: boolean;
 }
 
 export interface Workspace {
@@ -299,6 +304,10 @@ export interface TenantContext {
   nodes: Array<ScopeNode>;
   /** Team members holding a seat (active or invited). */
   seats: number;
+  /** The Tenantly plan's name and payment standing (billing's word, carried by identity). */
+  billing: { plan: string | null; status: Standing };
+  /** Tenantly restricted the viewer's account: every service refuses their changes. */
+  restricted?: boolean;
 }
 
 export interface Member {
@@ -524,6 +533,8 @@ export interface Charge {
   status: ChargeStatus;
   /** Set while it sits on an invoice. */
   invoiceId: string | null;
+  /** The booking that raised it (its price, a drop-in seat, a fee); null for plans. */
+  bookingId: string | null;
 }
 
 /** A customer invoice: open charges under one number, with tax per the business's settings when issued. */
@@ -587,35 +598,326 @@ export interface Insights {
   locations: Array<{ id: string; name: string; revenue: Money; utilization: number }>;
 }
 
-export interface UsageMeter {
+/** Where a business stands with its Tenantly invoices (docs/BILLING.md §5.1). */
+export type Standing = 'active' | 'past_due' | 'limited' | 'restricted' | 'canceled';
+
+/** One priced edition of a Tenantly plan; prices are USD decimal strings. */
+export interface PlanVersion {
   id: string;
-  label: string;
-  service: string;
-  used: number;
-  /** Null when the plan sets no limit (a Custom plan may not). */
-  limit: number | null;
-  unit: string;
-  series: Array<number>;
+  code: string;
+  name: string;
+  version: number;
+  /** Honoured for this business, no longer offered. */
+  legacy: boolean;
+  /** A Custom plan agreed with Tenantly for this business only. */
+  custom: boolean;
+  currency: string;
+  price: Money;
+  /** Active customers the price covers each month; null: no limit. */
+  included: number | null;
+  /** Per active customer past `included`; null: no overage. */
+  overagePrice: Money | null;
+  /** A month never costs more than this (the next plan's price); null: the spend cap applies. */
+  cap: Money | null;
+  rank: number;
 }
 
-/** Usage tiers, smallest first, then the plan negotiated with Tenantly per business. */
-export type PlanName = 'Starter' | 'Growth' | 'Enterprise' | 'Custom';
+export type InvoiceLineKind = 'base' | 'overage' | 'cap' | 'discount' | 'credit';
 
-/** The Tenantly plan, priced by billing (always in `currency`, USD) on consumption, not seats. */
+export interface PlanLine {
+  kind: InvoiceLineKind;
+  amount: Money;
+  quantity: number;
+  unitPrice: Money | null;
+  /** base: plan, version, from, until, prorated · overage: allowance, used · cap: cap · discount: percent */
+  detail: Record<string, string | number | boolean | null>;
+}
+
+export type BillingNoticeKind =
+  | 'threshold'
+  | 'cap'
+  | 'invoice'
+  | 'paid'
+  | 'plan_repriced'
+  | 'card_failed'
+  | 'overdue'
+  | 'limit_warning'
+  | 'limited'
+  | 'restrict_warning'
+  | 'restricted'
+  | 'cancel_warning'
+  | 'canceled';
+
+export interface BillingNotice {
+  id: number;
+  kind: BillingNoticeKind;
+  params: Record<string, string | number | null>;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface BillingStanding {
+  status: Standing;
+  invoice: { id: string; number: string; dueOn: string; total: Money } | null;
+  balance: Money;
+  overdueDays: number;
+  disputed: boolean;
+  limitsOn: string | null;
+  restrictsOn: string | null;
+  cancelsOn: string | null;
+  extensionAvailable: boolean;
+  retentionUntil: string | null;
+}
+
+/** The Tenantly plan page in one read: every number is billing's, the page prices nothing. */
 export interface Billing {
-  /** The plan the business chose. */
-  plan: PlanName;
-  /** The tier this month is billed on: above `plan` when usage passed its limits. */
-  billedPlan: PlanName;
-  /** Usage passed even Enterprise's limits: time for a Custom plan. */
-  outgrown: boolean;
   currency: string;
-  /** A month of `billedPlan`. */
+  plan: PlanVersion;
+  /** A downgrade waiting for the renewal. */
+  scheduled: PlanVersion | null;
+  status: 'active' | 'canceled';
+  cancelAtPeriodEnd: boolean;
+  standing: BillingStanding;
+  /** Sent back with every change, so two people can't overwrite each other. */
+  revision: number;
+  canManage: boolean;
+  payment: { method: 'manual' | 'stripe'; card: boolean; cardsAvailable: boolean };
+  /** The billing policy's numbers the page quotes. */
+  policy: { paymentTermsDays: number; extensionDays: number };
+  alertThresholds: Array<number>;
+  spendCap: { editable: boolean; value: Money | null; default: Money };
+  /** `[start, end)`, ISO datetimes in UTC. */
+  period: { id: number; start: string; end: string; status: 'open' | 'closing' | 'invoiced' | 'held' };
+  usage: {
+    metric: string;
+    used: number;
+    allowance: number | null;
+    remaining: number | null;
+    percent: number | null;
+    /** Where the month lands at this pace; null early in the month. */
+    projected: number | null;
+    /** Customers newly counted per day of the period. */
+    series: Array<number>;
+  };
+  estimate: { lines: Array<PlanLine>; total: Money; cap: Money | null; projectedTotal: Money | null };
+  /** Shown for context, never billed. */
+  informational: { bookings: number; payments: number; collected: { amount: Money; currency: string } };
+  /** The public price list, each with what this period would cost on it. */
+  plans: Array<PlanVersion & { thisPeriod: Money }>;
+  notices: Array<BillingNotice>;
+}
+
+export interface PlanInvoice {
+  id: string;
+  number: string;
+  periodStart: string;
+  periodEnd: string;
+  currency: string;
+  total: Money;
+  status: 'open' | 'paid' | 'void';
+  issuedOn: string;
+  dueOn: string;
+  paidOn: string | null;
+  paidVia: string | null;
+  lines?: Array<PlanLine>;
+}
+
+export interface BillingHistory {
+  periods: Array<{
+    id: number;
+    start: string;
+    end: string;
+    status: string;
+    plan: string;
+    used: number;
+    allowance: number | null;
+    invoice: PlanInvoice | null;
+  }>;
+  changes: Array<{
+    kind: string;
+    from: string | null;
+    to: string | null;
+    at: string;
+    by: string;
+    detail: Record<string, unknown>;
+  }>;
+}
+
+/** Who was counted in a period, and why: the answer to "where does this number come from?". */
+export interface CountedCustomers {
+  periodId: number | null;
+  start?: string;
+  end?: string;
+  total: number;
+  customers: Array<{ customerId: string; name: string; firstSeenAt: string; source: string; reference: string }>;
+}
+
+// ------------------------------------------------------------ Tenantly admin --
+
+/** A business's plan at a glance, from billing; null when billing is down or it isn't subscribed yet. */
+export interface AdminBillingSummary {
+  plan: string;
+  currency: string;
   price: Money;
-  meters: Array<UsageMeter>;
-  /** What the business's customers paid this month, in the business's currency. */
-  collectedThisMonth: { amount: Money; currency: string };
-  nextInvoice: { date: string; estimate: Money };
-  /** Custom has no list price or limits: they're agreed per business. */
-  plans: Array<{ name: PlanName; price: Money | null; customerLimit: number | null; paymentLimit: number | null }>;
+  status: Standing;
+  used: number;
+  allowance: number | null;
+  periodEnd: string | null;
+  openBalance: Money;
+}
+
+export interface AdminBusiness {
+  id: string;
+  slug: string;
+  name: string;
+  createdAt: string;
+  members: number;
+  billing: AdminBillingSummary | null;
+}
+
+/** Someone who owns at least one business; employees are never listed. */
+export interface AdminOwner {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  /** Restricted: signs in and reads only. Suspended: can't sign in. */
+  status: OwnerStatus;
+  statusChangedAt: string | null;
+  businesses: Array<AdminBusiness>;
+}
+
+export type OwnerStatus = 'active' | 'restricted' | 'suspended';
+
+/** The public tiers a business can start on; Custom terms are set afterwards on its subscription. */
+export type StartingPlan = 'starter' | 'growth' | 'enterprise';
+
+/** What the console sends to open a business for an owner. */
+export interface NewBusiness {
+  name: string;
+  industry: string;
+  locationName: string;
+  currency: string;
+}
+
+/** A business the console just opened; `billingPending` when billing will set its plan on first use. */
+export interface OpenedBusiness {
+  id: string;
+  slug: string;
+  name: string;
+  plan: StartingPlan;
+  billingPending: boolean;
+}
+
+export interface AdminOwners {
+  owners: Array<AdminOwner>;
+  total: number;
+  offset: number;
+  limit: number;
+  /** False when billing couldn't be reached: every `billing` is null for that reason. */
+  billingAvailable: boolean;
+}
+
+export type GrantKind = 'extra_allowance' | 'discount_pct' | 'waive_overage' | 'extend_grace' | 'dispute';
+
+export interface PlanGrant {
+  id: number;
+  kind: GrantKind;
+  metric: string;
+  value: string;
+  validFrom: string;
+  validUntil: string;
+  reason: string;
+  approvedBy: string;
+}
+
+/** One business's subscription as Tenantly staff see it. */
+export interface AdminSubscription {
+  tenantId: string;
+  currency: string;
+  plan: PlanVersion;
+  scheduled: PlanVersion | null;
+  status: 'active' | 'canceled';
+  cancelAtPeriodEnd: boolean;
+  standing: BillingStanding;
+  revision: number;
+  paymentMethod: 'manual' | 'stripe';
+  period: { start: string; end: string; status: string } | null;
+  usage: { used: number; allowance: number | null; projected: number | null };
+  estimate: { lines: Array<PlanLine>; total: Money; cap: Money | null; projectedTotal: Money | null } | null;
+  invoices: Array<PlanInvoice>;
+  grants: Array<PlanGrant>;
+  changes: BillingHistory['changes'];
+  /** The public tiers offered. */
+  plans: Array<PlanVersion>;
+}
+
+/** The signed-in Tenantly admin and what's left of their access window. */
+export interface AdminViewer {
+  id: string;
+  name: string;
+  email: string;
+  activeUntil: string | null;
+  remainingSeconds: number;
+}
+
+/** A public plan version with who's on it and this period's usage. */
+export interface AdminPlan extends PlanVersion {
+  status: 'active' | 'legacy' | 'draft';
+  effectiveFrom: string;
+  subscribers: number;
+  /** Businesses scheduled to move onto it at their next renewal. */
+  scheduledIn: number;
+  usage: { used: number; over: number };
+}
+
+export interface AdminPlans {
+  plans: Array<AdminPlan>;
+  customSubscribers: number;
+}
+
+/** One version of the billing policy (billing's `BillingPolicy`). */
+export interface BillingPolicy {
+  version: number;
+  limitAfterDays: number;
+  restrictAfterDays: number;
+  cancelAfterDays: number;
+  paymentTermsDays: number;
+  smallBalance: Money;
+  extensionDays: number;
+  extensionEveryDays: number;
+  retentionDays: number;
+  usageGraceHours: number;
+  spendCapMultiple: string;
+  alertThresholds: Array<number>;
+  effectiveAt: string | null;
+  editedBy: string;
+  reason: string;
+}
+
+export interface AdminPolicy {
+  current: BillingPolicy;
+  history: Array<BillingPolicy>;
+}
+
+export type PolicyFields = Omit<BillingPolicy, 'version' | 'effectiveAt' | 'editedBy' | 'reason'>;
+
+export interface AdminAuditEvent {
+  id: number;
+  at: string;
+  kind: 'created' | 'activated' | 'login' | 'login_denied' | 'expired' | 'blocked' | 'action';
+  action: string;
+  admin: { id: string; name: string; email: string } | null;
+  targetType: string;
+  targetId: string;
+  before: unknown;
+  after: unknown;
+  ip: string;
+}
+
+export interface AdminAudit {
+  events: Array<AdminAuditEvent>;
+  total: number;
+  offset: number;
+  limit: number;
 }

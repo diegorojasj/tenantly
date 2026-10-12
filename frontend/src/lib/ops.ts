@@ -351,9 +351,23 @@ export const getPayments = GET(async (slug: string, scope: string) => {
   }>(slug, scope, 'billing', '/payments');
 });
 
+/** What one booking raised, for the booking panel; empty for roles that don't see money. */
+export const getBookingCharges = GET(async (slug: string, bookingId: string) => {
+  'use server';
+  const access = await enterTenant(slug);
+  return api<{ canSee: boolean; canCollect: boolean; charges: Array<Charge> }>('billing', `/bookings/${bookingId}/charges`, { token: access.jwt });
+});
+
 export const getInvoices = GET(async (slug: string, scope: string) => {
   'use server';
   return read<{ canIssue: boolean; invoices: Array<Invoice> }>(slug, scope, 'billing', '/invoices');
+});
+
+/** One invoice with its lines, for the invoice view (and printing it). */
+export const getInvoice = GET(async (slug: string, invoiceId: string): Promise<Invoice> => {
+  'use server';
+  const access = await enterTenant(slug);
+  return api<Invoice>('billing', `/invoices/${invoiceId}`, { token: access.jwt });
 });
 
 /** Gather a customer's open charges onto one invoice, with tax per the business's settings. */
@@ -366,13 +380,13 @@ export async function issueInvoice(input: { org: string; customerId: string }) {
 export async function settleInvoice(input: { org: string; invoiceId: string; action: 'pay' | 'void' }) {
   'use server';
   await write(input.org, 'billing', `/invoices/${input.invoiceId}/${input.action}`);
-  return reload({ revalidate: ['invoices', 'payments', 'customers', 'customer', 'today', 'insights', 'audit'] });
+  return reload({ revalidate: ['invoices', 'payments', 'customers', 'customer', 'today', 'calendar', 'bookings', 'insights', 'audit'] });
 }
 
 export async function settleCharge(input: { org: string; chargeId: string; action: 'collect' | 'refund' }) {
   'use server';
   await write(input.org, 'billing', `/charges/${input.chargeId}/${input.action}`);
-  return reload({ revalidate: ['payments', 'customers', 'customer', 'today', 'insights', 'audit'] });
+  return reload({ revalidate: ['payments', 'customers', 'customer', 'today', 'calendar', 'bookings', 'insights', 'audit'] });
 }
 
 // --------------------------------------------------------------- insights --
