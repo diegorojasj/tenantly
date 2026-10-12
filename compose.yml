@@ -1,7 +1,8 @@
 # Tenantly stack.
 #   podman compose --profile DEV up      # services + proxy + frontend with hot reload
 #   podman compose --profile PROD up     # services + proxy + built frontend
-# Everything is reached through the proxy on http://localhost:8080.
+# Everything is reached through the proxy: the app on http://localhost:8080 and the Tenantly
+# admin console on http://admin.localhost:8080 (ADMIN_HOST), never one through the other.
 
 x-service: &service
   build:
@@ -28,6 +29,9 @@ x-frontend-env: &frontend-env
   SESSION_SECRET: ${SESSION_SECRET}
   # The frontend's server functions reach every service through the proxy.
   API_URL: http://proxy:8080/api
+  # The admin console's host, and the proxy's admin side (the only one serving the admin API).
+  ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
+  ADMIN_API_URL: http://admin-proxy:8080/api
 
 services:
   postgres:
@@ -52,10 +56,27 @@ services:
       context: ./services
       dockerfile: ../containers/containerfiles/service.containerfile
       args: { SERVICE: identity }
-    environment:
+    environment: &identity-env
       <<: *service-env
       DJANGO_SECRET_KEY: ${IDENTITY_SECRET_KEY}
       DATABASE_URL: postgres://${POSTGRES_USER:-tenantly}:${POSTGRES_PASSWORD}@postgres:5432/identity
+      # Tenantly admin tokens: identity alone signs and checks them, with a key of their own.
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      ADMIN_WINDOW_MINUTES: ${ADMIN_WINDOW_MINUTES:-10}
+
+  # Blocks Tenantly admins whose access window has passed (housekeeping: every admin request
+  # checks the window itself). Same image; waits for identity to migrate.
+  identity-admin-sweep:
+    <<: *service
+    build:
+      context: ./services
+      dockerfile: ../containers/containerfiles/service.containerfile
+      args: { SERVICE: identity }
+    command: ["python", "manage.py", "expire_admins", "--loop", "60"]
+    healthcheck: { disable: true }
+    environment: *identity-env
+    depends_on:
+      identity: { condition: service_healthy }
 
   operations:
     <<: *service
@@ -96,14 +117,43 @@ services:
       <<: *service-env
       DJANGO_SECRET_KEY: ${BILLING_SECRET_KEY}
       DATABASE_URL: postgres://${POSTGRES_USER:-tenantly}:${POSTGRES_PASSWORD}@postgres:5432/billing
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+
+  # The Tenantly plan's daily cycle (docs/BILLING.md): renews periods, invoices them after
+  # their grace, charges saved cards and chases unpaid invoices. Idempotent; same image.
+  billing-cycle:
+    <<: *service
+    build:
+      context: ./services
+      dockerfile: ../containers/containerfiles/service.containerfile
+      args: { SERVICE: billing }
+    command: ["python", "manage.py", "billing_cycle", "--loop", "3600"]
+    healthcheck: { disable: true }
+    environment:
+      <<: *service-env
+      DJANGO_SECRET_KEY: ${BILLING_SECRET_KEY}
+      DATABASE_URL: postgres://${POSTGRES_USER:-tenantly}:${POSTGRES_PASSWORD}@postgres:5432/billing
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    depends_on:
+      billing: { condition: service_healthy }
+      identity: { condition: service_healthy }
 
   proxy:
     image: docker.io/library/nginx:1.27-alpine
     restart: unless-stopped
     environment:
       NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+      ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
     ports:
       - "8080:8080"
+    networks:
+      default:
+        # The frontend's server reaches the admin API on the proxy's admin side by this name.
+        aliases: [admin-proxy]
     volumes:
       - ./containers/proxy/default.conf.template:/etc/nginx/templates/default.conf.template:ro,z
       - web-cache:/var/cache/nginx
