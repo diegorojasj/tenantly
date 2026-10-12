@@ -1,6 +1,7 @@
 import { defineMessages } from './define';
 
-// The gateway (sign in / up, pick or create a workspace) and the 404 page.
+// The gateway (sign in, pick a workspace) and the 404 page. Nobody signs up here:
+// Tenantly creates owners' accounts, and owners create their team's.
 export default defineMessages(
   {
     // 404
@@ -12,41 +13,22 @@ export default defineMessages(
     headTitle: 'Sign in',
     foot: 'One platform for any business that sells time, capacity or access, each in its own isolated workspace.',
     welcomeBack: 'Welcome back',
-    getStarted: 'Get started',
     signIn: 'Sign in',
-    createYourAccount: 'Create your account',
-    yourName: 'Your name',
     email: 'Email',
     password: 'Password',
-    passwordHint: 'At least 8 characters.',
-    createAccount: 'Create account',
-    newHere: 'New to Tenantly?',
-    haveAccount: 'Already have an account?',
-    createAnAccount: 'Create an account',
-    inviteHint: 'Use the email address the invite was sent to and you will join that business.',
-    invitedHint: 'Invited by a business? Open the invite link you were given.',
+    inviteHint: 'Sign in with the email address the invite was sent to and you will join that business.',
+    noAccountHint:
+      "No account? Your business's owner creates accounts for their team; to open a business on Tenantly, contact Tenantly.",
 
     // Workspaces
     greeting: 'Hi {name}',
     invited: "You've been invited to a business.",
     acceptInvite: 'Accept invite',
-    setUpTitle: 'Set up your business',
-    setUpLede:
-      "You don't belong to a workspace yet. Create one for your business — or ask your manager to invite this email address.",
+    noWorkspaceTitle: 'No workspace yet',
+    noWorkspaceLede:
+      "You don't belong to a business yet. Ask its owner to add this email address to their team, or contact Tenantly to open a business.",
     pickWorkspace: 'Pick a workspace',
-    createAnother: 'Create another business',
     signOut: 'Sign out',
-
-    // Create a business
-    businessName: 'Business name',
-    businessNamePlaceholder: 'e.g. Northside Studio',
-    industry: 'What you do (optional)',
-    industryPlaceholder: 'e.g. Yoga classes, bike hire, home repairs',
-    firstLocation: 'Name your first location',
-    firstLocationPlaceholder: 'e.g. Downtown',
-    moreLocationsLater: 'You can add more locations later.',
-    createBusiness: 'Create business',
-    cancel: 'Cancel',
   },
   {
     notFoundTitle: 'No hay nada en esta dirección',
@@ -56,38 +38,20 @@ export default defineMessages(
     headTitle: 'Iniciar sesión',
     foot: 'Una plataforma para cualquier negocio que vende tiempo, capacidad o acceso, cada uno en su propio espacio de trabajo aislado.',
     welcomeBack: 'Hola de nuevo',
-    getStarted: 'Empieza',
     signIn: 'Inicia sesión',
-    createYourAccount: 'Crea tu cuenta',
-    yourName: 'Tu nombre',
     email: 'Correo electrónico',
     password: 'Contraseña',
-    passwordHint: 'Al menos 8 caracteres.',
-    createAccount: 'Crear cuenta',
-    newHere: '¿Nuevo en Tenantly?',
-    haveAccount: '¿Ya tienes una cuenta?',
-    createAnAccount: 'Crea una cuenta',
-    inviteHint: 'Usa el correo electrónico al que se envió la invitación y te unirás a ese negocio.',
-    invitedHint: '¿Te invitó un negocio? Abre el enlace de invitación que te dieron.',
+    inviteHint: 'Inicia sesión con el correo electrónico al que se envió la invitación y te unirás a ese negocio.',
+    noAccountHint:
+      '¿No tienes cuenta? El propietario de tu negocio crea las cuentas de su equipo; para abrir un negocio en Tenantly, contacta con Tenantly.',
 
     greeting: 'Hola, {name}',
     invited: 'Te invitaron a un negocio.',
     acceptInvite: 'Aceptar invitación',
-    setUpTitle: 'Configura tu negocio',
-    setUpLede:
-      'Todavía no perteneces a ningún espacio de trabajo. Crea uno para tu negocio, o pide a tu gerente que invite a este correo electrónico.',
+    noWorkspaceTitle: 'Aún no tienes espacio de trabajo',
+    noWorkspaceLede:
+      'Todavía no perteneces a ningún negocio. Pide a su propietario que agregue este correo electrónico a su equipo, o contacta con Tenantly para abrir un negocio.',
     pickWorkspace: 'Elige un espacio de trabajo',
-    createAnother: 'Crear otro negocio',
     signOut: 'Cerrar sesión',
-
-    businessName: 'Nombre del negocio',
-    businessNamePlaceholder: 'p. ej., Estudio Norte',
-    industry: 'A qué te dedicas (opcional)',
-    industryPlaceholder: 'p. ej., clases de yoga, alquiler de bicicletas, reparaciones del hogar',
-    firstLocation: 'Nombra tu primera sede',
-    firstLocationPlaceholder: 'p. ej., Centro',
-    moreLocationsLater: 'Puedes agregar más sedes después.',
-    createBusiness: 'Crear negocio',
-    cancel: 'Cancelar',
   },
 );

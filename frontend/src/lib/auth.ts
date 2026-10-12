@@ -1,6 +1,8 @@
 // Accounts and workspaces, backed by the identity service. The browser keeps
 // only a signed cookie holding the identity session token; the password never
-// touches anything but the identity service.
+// touches anything but the identity service. There's no sign-up or "create a
+// business" here: Tenantly admins create owners and their businesses (lib/admin.ts),
+// and owners create their team's accounts (lib/tenancy.ts inviteMember).
 import { reload } from '@solidjs/web';
 import { GET } from '@solidjs/web/server-functions';
 
@@ -8,7 +10,7 @@ import { refuse } from '../server/access';
 import { api } from '../server/api';
 import { t } from './i18n';
 import { clearSession, getSession, setSession } from '../server/session';
-import type { Tenant, Viewer, Workspace } from './types';
+import type { Viewer, Workspace } from './types';
 
 export const getCurrentUser = GET(async (): Promise<Viewer | null> => {
   'use server';
@@ -32,13 +34,6 @@ export const getWorkspaces = GET(async (): Promise<Array<Workspace>> => {
     return [];
   }
 });
-
-export async function signUp(input: { name: string; email: string; password: string; invite?: string }) {
-  'use server';
-  const { token } = await api<{ token: string }>('identity', '/auth/signup', { body: input });
-  await setSession({ token });
-  return reload({ revalidate: ['current-user', 'workspaces'] });
-}
 
 export async function signIn(input: { email: string; password: string; invite?: string }) {
   'use server';
@@ -66,15 +61,4 @@ export async function logout() {
   }
   await clearSession();
   return reload({ revalidate: ['current-user', 'workspaces'] });
-}
-
-export async function createWorkspace(input: {
-  name: string;
-  industry: string;
-  locationName: string;
-}): Promise<Tenant> {
-  'use server';
-  const token = (await getSession())?.token;
-  if (!token) throw refuse(t('common.signInToContinue'));
-  return api<Tenant>('identity', '/tenants', { token, body: input });
 }
