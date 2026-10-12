@@ -1,18 +1,19 @@
 // The booking side panel shared by Today, Calendar and Bookings: what was
-// booked, who and what delivers it, where it stands, and the lifecycle moves
-// the server will accept from here.
+// booked, who and what delivers it, where it stands, the lifecycle moves
+// the server will accept from here, and what it's owed — so finishing a
+// booking and taking its payment happen in one place.
 import { useMutation, useQuery } from '@tanstack/solid-query';
 import { Link } from '@tanstack/solid-router';
-import { createSignal, For, Loading, Show } from 'solid-js';
+import { createSignal, Errored, For, Loading, Show } from 'solid-js';
 
-import { fmtDay, fmtMoney, fmtUntil, zoneName } from '../lib/format';
+import { fmtDay, fmtMoney, fmtUntil, sumMoney, toCents, zoneName } from '../lib/format';
 import { t as tr } from '../lib/i18n';
 import { actionVerb, confirmText, movedMessage, needsConfirm, nextStatuses } from '../lib/lifecycle';
 import { notify } from '../lib/toast';
 import ConfirmButton from './ConfirmButton';
-import { setBookingStatus, joinSession } from '../lib/ops';
-import { customersQuery } from '../lib/queries';
-import type { Booking, BookingStatus, Template } from '../lib/types';
+import { issueInvoice, joinSession, setBookingStatus, settleCharge } from '../lib/ops';
+import { bookingChargesQuery, customersQuery } from '../lib/queries';
+import type { Booking, BookingStatus, Charge, Template } from '../lib/types';
 import Icon from './Icon';
 import { KindBadge, Skeleton, StatusPill } from './ui';
 
@@ -31,8 +32,16 @@ export default function BookingPanel(props: {
   const isClass = () => !booking().customerId;
   const move = useMutation(() => ({
     mutationFn: (status: BookingStatus) => setBookingStatus({ org: props.org, bookingId: booking().id, status }),
-    onSuccess: (_r, status) =>
-      notify(movedMessage(isClass() ? booking().offeringName : booking().customerName, t().status, status)),
+    onSuccess: (_r, status) => {
+      const who = isClass() ? booking().offeringName : booking().customerName;
+      // Finishing a booking that's charged on completion: say what's now owed, right here.
+      const owes = status === 'completed' && !isClass() && !booking().paid && toCents(booking().price) > 0;
+      notify(
+        owes
+          ? tr('booking.completedCollect', { who, status: t().status.completed.toLowerCase(), amount: fmtMoney(booking().price, booking().currency) })
+          : movedMessage(who, t().status, status),
+      );
+    },
   }));
 
   return (
@@ -114,10 +123,123 @@ export default function BookingPanel(props: {
         </Show>
       </dl>
 
+      {/* Money is billing's: if it can't answer, the booking itself still works. */}
+      <Errored fallback={() => null}>
+        <Loading fallback={<Skeleton rows={2} height={28} />}>
+          <Payment org={props.org} booking={booking()} template={t()} />
+        </Loading>
+      </Errored>
+
       <Show when={isClass()}>
         <Attendees org={props.org} booking={booking()} template={t()} canManage={props.canManage} />
       </Show>
     </aside>
+  );
+}
+
+/** What the booking raised and the moves on it: collect, invoice, refund — without leaving the panel. */
+function Payment(props: { org: string; booking: Booking; template: Template }) {
+  const q = useQuery(() => bookingChargesQuery(props.org, props.booking.id));
+  const settle = useMutation(() => ({
+    mutationFn: (input: { charge: Charge; action: 'collect' | 'refund' }) =>
+      settleCharge({ org: props.org, chargeId: input.charge.id, action: input.action }),
+    onSuccess: (_r, { charge, action }) => {
+      const params = { amount: fmtMoney(charge.amount, charge.currency), name: charge.customerName };
+      notify(action === 'collect' ? tr('payments.toastCollected', params) : tr('payments.toastRefunded', params));
+    },
+  }));
+  const invoice = useMutation(() => ({
+    mutationFn: (charge: Charge) => issueInvoice({ org: props.org, customerId: charge.customerId }),
+    onSuccess: (_r, charge) => notify(tr('payments.toastInvoiceIssued', { name: charge.customerName })),
+  }));
+  const b = () => props.booking;
+  const isOpen = (c: Charge) => c.status === 'due' || c.status === 'overdue';
+  const owed = () => sumMoney(q.data.charges.filter(isOpen).map((c) => c.amount));
+  const currency = () => q.data.charges[0]?.currency ?? b().currency;
+  const priced = () => toCents(b().price) > 0;
+  // Nothing raised yet: say when it will be, so nobody wonders whether to take money now.
+  const before = () => {
+    if (!b().customerId) return priced() ? tr('booking.paymentSeats', { customer: props.template.terms.customer.toLowerCase() }) : '';
+    if (b().paid) return tr('booking.paymentPrepaid');
+    if (!priced() || b().status === 'cancelled' || b().status === 'no_show') return '';
+    if (b().status === 'completed') return tr('booking.paymentPending');
+    return tr('booking.paymentOnComplete', { amount: fmtMoney(b().price, b().currency), status: props.template.status.completed });
+  };
+  const busy = () => settle.isPending || invoice.isPending;
+
+  return (
+    <Show when={q.data.canSee && (q.data.charges.length || before())}>
+      <section class="pay-box" aria-label={tr('booking.paymentTitle')}>
+        <h3>
+          {tr('booking.paymentTitle')}
+          <Show
+            when={toCents(owed()) > 0}
+            fallback={
+              <Show when={q.data.charges.some((c) => c.status === 'paid')}>
+                <span class="pill ok">{tr('booking.paymentSettled')}</span>
+              </Show>
+            }
+          >
+            <span class="pill warn">{tr('booking.paymentToCollect', { amount: fmtMoney(owed(), currency()) })}</span>
+          </Show>
+        </h3>
+        <Show when={!q.data.charges.length}>
+          <p class="muted">{before()}</p>
+        </Show>
+        <ul class="pay-list">
+          <For each={q.data.charges}>
+            {(c) => (
+              <li class={{ dim: c.status === 'refunded' }}>
+                <span>
+                  {b().customerId ? c.description : c.customerName}
+                  <span class="muted block">
+                    {c.date} · {tr(`payments.chargeStatus_${c.status}`)}
+                  </span>
+                </span>
+                <strong class="mono">{fmtMoney(c.amount, c.currency)}</strong>
+                <span class="row-actions">
+                  <Show when={q.data.canCollect}>
+                    <Show when={isOpen(c) && !c.invoiceId}>
+                      <button type="button" class="btn small" disabled={busy()} onClick={() => settle.mutate({ charge: c, action: 'collect' })}>
+                        {tr('booking.collectNow', { amount: fmtMoney(c.amount, c.currency) })}
+                      </button>
+                      <button type="button" class="btn small ghost" title={tr('payments.invoiceButtonTitle')} disabled={busy()} onClick={() => invoice.mutate(c)}>
+                        {tr('payments.invoiceButton')}
+                      </button>
+                    </Show>
+                    <Show when={isOpen(c) && c.invoiceId}>
+                      {(id) => (
+                        <Link to="/t/$org/invoices/$id" params={{ org: props.org, id: id() }} class="pill neutral">
+                          {tr('payments.onInvoice')} →
+                        </Link>
+                      )}
+                    </Show>
+                    <Show when={c.status === 'paid'}>
+                      <ConfirmButton
+                        class="small ghost"
+                        label={tr('payments.refundButton')}
+                        confirm={tr('payments.refundConfirm', { amount: fmtMoney(c.amount, c.currency) })}
+                        disabled={busy()}
+                        onConfirm={() => settle.mutate({ charge: c, action: 'refund' })}
+                      />
+                    </Show>
+                  </Show>
+                </span>
+              </li>
+            )}
+          </For>
+        </ul>
+        <Show when={!q.data.canCollect && toCents(owed()) > 0}>
+          <p class="muted">{tr('booking.paymentAskDesk')}</p>
+        </Show>
+        <Show when={q.data.canCollect && q.data.charges.length}>
+          <Link to="/t/$org/payments" params={{ org: props.org }} search={{ scope: b().locationId }} class="link">
+            {tr('booking.paymentAll')}
+          </Link>
+        </Show>
+        <Show when={settle.error ?? invoice.error}>{(error) => <p role="alert" class="error">{error()?.message}</p>}</Show>
+      </section>
+    </Show>
   );
 }
 

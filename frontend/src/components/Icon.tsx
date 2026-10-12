@@ -28,6 +28,7 @@ const paths = {
   dot: 'M12 11a1 1 0 100 2 1 1 0 000-2z',
   shield: 'M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z',
   reset: 'M4 12a8 8 0 108-8H8M8 1L5 4l3 3',
+  pin: 'M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11zM12 7.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z',
 } as const;
 
 export type IconName = keyof typeof paths;

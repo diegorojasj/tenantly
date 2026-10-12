@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/solid-query';
-import { createFileRoute } from '@tanstack/solid-router';
+import { Link, createFileRoute } from '@tanstack/solid-router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 
 import ConfirmButton from '../components/ConfirmButton';
@@ -140,7 +140,11 @@ function PaymentsPage() {
                     <td class="row-actions">
                       <Show when={pay.data.canCollect}>
                         <Show when={(c.status === 'due' || c.status === 'overdue') && c.invoiceId}>
-                          <span class="pill neutral">{tr('payments.onInvoice')}</span>
+                          {(id) => (
+                            <Link to="/t/$org/invoices/$id" params={{ org: org(), id: id() }} search={scope() ? { scope: scope() } : {}} class="pill neutral">
+                              {tr('payments.onInvoice')} →
+                            </Link>
+                          )}
                         </Show>
                         <Show when={(c.status === 'due' || c.status === 'overdue') && !c.invoiceId}>
                           <button type="button" class="btn small" disabled={busy(c.id)} onClick={() => settle.mutate({ chargeId: c.id, action: 'collect' })}>
@@ -215,7 +219,11 @@ function PaymentsPage() {
               >
                 {(inv) => (
                   <tr class={{ dim: inv.status === 'void' }}>
-                    <td class="mono">{inv.number}</td>
+                    <td class="mono">
+                      <Link to="/t/$org/invoices/$id" params={{ org: org(), id: inv.id }} search={scope() ? { scope: scope() } : {}} class="link">
+                        {inv.number}
+                      </Link>
+                    </td>
                     <td class="mono muted">{inv.issuedOn}</td>
                     <td>
                       <strong>{inv.customerName}</strong>
@@ -229,6 +237,15 @@ function PaymentsPage() {
                       <span class={['pill', inv.status === 'paid' ? 'ok' : inv.status === 'open' ? 'warn' : 'neutral']}>{tr(`payments.invoiceStatus_${inv.status}`)}</span>
                     </td>
                     <td class="row-actions">
+                      <Link
+                        to="/t/$org/invoices/$id"
+                        params={{ org: org(), id: inv.id }}
+                        search={scope() ? { scope: scope() } : {}}
+                        class="btn small ghost"
+                        title={tr('payments.viewInvoiceTitle', { number: inv.number })}
+                      >
+                        {tr('payments.viewInvoice')}
+                      </Link>
                       <Show when={invoices.data.canIssue && inv.status === 'open'}>
                         <button
                           type="button"

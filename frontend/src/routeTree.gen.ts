@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as TOrgRouteImport } from './routes/t.$org'
 import { Route as TOrgIndexRouteImport } from './routes/t.$org.index'
 import { Route as TOrgAccessRouteImport } from './routes/t.$org.access'
@@ -25,10 +26,16 @@ import { Route as TOrgPaymentsRouteImport } from './routes/t.$org.payments'
 import { Route as TOrgResourcesRouteImport } from './routes/t.$org.resources'
 import { Route as TOrgSettingsRouteImport } from './routes/t.$org.settings'
 import { Route as TOrgStructureRouteImport } from './routes/t.$org.structure'
+import { Route as TOrgInvoicesIdRouteImport } from './routes/t.$org.invoices.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TOrgRoute = TOrgRouteImport.update({
@@ -106,9 +113,15 @@ const TOrgStructureRoute = TOrgStructureRouteImport.update({
   path: '/structure',
   getParentRoute: () => TOrgRoute,
 } as any)
+const TOrgInvoicesIdRoute = TOrgInvoicesIdRouteImport.update({
+  id: '/invoices/$id',
+  path: '/invoices/$id',
+  getParentRoute: () => TOrgRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/t/$org': typeof TOrgRouteWithChildren
   '/t/$org/access': typeof TOrgAccessRoute
   '/t/$org/audit': typeof TOrgAuditRoute
@@ -124,9 +137,11 @@ export interface FileRoutesByFullPath {
   '/t/$org/settings': typeof TOrgSettingsRoute
   '/t/$org/structure': typeof TOrgStructureRoute
   '/t/$org/': typeof TOrgIndexRoute
+  '/t/$org/invoices/$id': typeof TOrgInvoicesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/t/$org/access': typeof TOrgAccessRoute
   '/t/$org/audit': typeof TOrgAuditRoute
   '/t/$org/billing': typeof TOrgBillingRoute
@@ -141,10 +156,12 @@ export interface FileRoutesByTo {
   '/t/$org/settings': typeof TOrgSettingsRoute
   '/t/$org/structure': typeof TOrgStructureRoute
   '/t/$org': typeof TOrgIndexRoute
+  '/t/$org/invoices/$id': typeof TOrgInvoicesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/t/$org': typeof TOrgRouteWithChildren
   '/t/$org/access': typeof TOrgAccessRoute
   '/t/$org/audit': typeof TOrgAuditRoute
@@ -160,11 +177,13 @@ export interface FileRoutesById {
   '/t/$org/settings': typeof TOrgSettingsRoute
   '/t/$org/structure': typeof TOrgStructureRoute
   '/t/$org/': typeof TOrgIndexRoute
+  '/t/$org/invoices/$id': typeof TOrgInvoicesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/t/$org'
     | '/t/$org/access'
     | '/t/$org/audit'
@@ -180,9 +199,11 @@ export interface FileRouteTypes {
     | '/t/$org/settings'
     | '/t/$org/structure'
     | '/t/$org/'
+    | '/t/$org/invoices/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/t/$org/access'
     | '/t/$org/audit'
     | '/t/$org/billing'
@@ -197,9 +218,11 @@ export interface FileRouteTypes {
     | '/t/$org/settings'
     | '/t/$org/structure'
     | '/t/$org'
+    | '/t/$org/invoices/$id'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/t/$org'
     | '/t/$org/access'
     | '/t/$org/audit'
@@ -215,10 +238,12 @@ export interface FileRouteTypes {
     | '/t/$org/settings'
     | '/t/$org/structure'
     | '/t/$org/'
+    | '/t/$org/invoices/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   TOrgRoute: typeof TOrgRouteWithChildren
 }
 
@@ -229,6 +254,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/t/$org': {
@@ -336,6 +368,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof TOrgStructureRouteImport
       parentRoute: typeof TOrgRoute
     }
+    '/t/$org/invoices/$id': {
+      id: '/t/$org/invoices/$id'
+      path: '/invoices/$id'
+      fullPath: '/t/$org/invoices/$id'
+      preLoaderRoute: typeof TOrgInvoicesIdRouteImport
+      parentRoute: typeof TOrgRoute
+    }
   }
 }
 
@@ -354,6 +393,7 @@ interface TOrgRouteChildren {
   TOrgSettingsRoute: typeof TOrgSettingsRoute
   TOrgStructureRoute: typeof TOrgStructureRoute
   TOrgIndexRoute: typeof TOrgIndexRoute
+  TOrgInvoicesIdRoute: typeof TOrgInvoicesIdRoute
 }
 
 const TOrgRouteChildren: TOrgRouteChildren = {
@@ -371,12 +411,14 @@ const TOrgRouteChildren: TOrgRouteChildren = {
   TOrgSettingsRoute: TOrgSettingsRoute,
   TOrgStructureRoute: TOrgStructureRoute,
   TOrgIndexRoute: TOrgIndexRoute,
+  TOrgInvoicesIdRoute: TOrgInvoicesIdRoute,
 }
 
 const TOrgRouteWithChildren = TOrgRoute._addFileChildren(TOrgRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   TOrgRoute: TOrgRouteWithChildren,
 }
 export const routeTree = rootRouteImport
