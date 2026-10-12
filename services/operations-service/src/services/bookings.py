@@ -299,7 +299,7 @@ def list_range(claims: TenantClaims, scope: str | None, range_: str) -> dict[str
         "from": first.isoformat(),
         "to": last.isoformat(),
         "canManage": claims.can("bookings.manage"),
-        "bookings": [shape.booking(claims, b) for b in rows],
+        "bookings": shape.bookings(claims, rows),
     }
 
 

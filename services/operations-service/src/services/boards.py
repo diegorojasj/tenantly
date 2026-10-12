@@ -221,8 +221,8 @@ def today(claims: TenantClaims, scope: str | None) -> dict[str, Any]:
             "revenue": wire(sum((dec(v) for v in revenue["byDay"].values()), ZERO)),
             "utilization": _utilization(claims, locations, "staff", day, day),
         },
-        "arrivals": [shape.booking(claims, b) for b in arrivals],
-        "inProgress": [shape.booking(claims, b) for b in in_progress],
+        "arrivals": shape.bookings(claims, arrivals),
+        "inProgress": shape.bookings(claims, in_progress),
         "alerts": _alerts(claims, live, arrivals, locations),
         "setup": _setup(claims),
     }
@@ -278,7 +278,7 @@ def calendar(claims: TenantClaims, scope: str | None, day_value: str | None) -> 
             "resources": [
                 shape.resource(r) for r in Resource.objects.filter(tenant_id=claims.tenant_id, location_id=focus.id)
             ],
-            "bookings": [shape.booking(claims, b) for b in rows],
+            "bookings": shape.bookings(claims, rows),
         },
         "sites": [],
     }

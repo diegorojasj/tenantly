@@ -6,11 +6,14 @@ from typing import TYPE_CHECKING, Any
 
 from common.money import wire
 
+from . import money
 from .clock import stamp
 from .fields import defs, visible
 from .fulfilment import people
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from django.db.models import QuerySet
 
     from common.auth import TenantClaims
@@ -53,6 +56,14 @@ def booking(claims: TenantClaims, b: Booking) -> dict[str, Any]:
         "currency": claims.currency,
         "paid": b.paid,
     }
+
+
+def bookings(claims: TenantClaims, rows: Iterable[Booking]) -> list[dict[str, Any]]:
+    """Many bookings at once. One charged on completion reads as paid once billing collected it."""
+    rows = list(rows)
+    owed = [str(b.id) for b in rows if b.customer_id and b.status == "completed" and not b.paid]
+    settled = money.settled(claims, owed)
+    return [{**booking(claims, b), "paid": b.paid or str(b.id) in settled} for b in rows]
 
 
 def offering(o: Offering) -> dict[str, Any]:

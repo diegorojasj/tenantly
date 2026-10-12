@@ -117,6 +117,26 @@ def balances(claims: TenantClaims, customer_ids: list[str] | None = None) -> dic
     )
 
 
+def settled(claims: TenantClaims, booking_ids: list[str]) -> set[str]:
+    """Of these bookings, the ones billing has since collected in full.
+
+    Read-only and best effort: if billing can't answer, the bookings keep the flag they had.
+    """
+    if not booking_ids:
+        return set()
+    try:
+        paid = call(
+            "billing",
+            "POST",
+            "/internal/bookings/settled",
+            json={"tenantId": claims.tenant_id, "bookingIds": booking_ids},
+        )
+    except (ApiError, RuntimeError) as exc:
+        log.warning("settled bookings unavailable: %s", exc)
+        return set()
+    return set(paid or [])
+
+
 def customer_charges(claims: TenantClaims, customer_id: str) -> list[dict[str, Any]]:
     return call("billing", "GET", f"/internal/customers/{customer_id}/charges", params={"tenant_id": claims.tenant_id})
 

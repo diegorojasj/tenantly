@@ -150,7 +150,7 @@ def profile(claims: TenantClaims, customer_id: str) -> dict[str, Any]:
             for s in subjects
         },
         "contacts": [{"id": str(o.id), "name": o.name, "role": o.account_role} for o in contacts],
-        "history": [shape.booking(claims, b) for b in history.order_by("-start")[:12]],
+        "history": shape.bookings(claims, history.order_by("-start")[:12]),
         "charges": money.customer_charges(claims, cid),
         "plans": [
             shape.offering(o)
