@@ -9,9 +9,11 @@ documents, policies, the next week of bookings and classes, and then months of h
 
 The API only books from now on, so history is written by the operations service's
 `seed_history` command, run inside its container at the end. The Tenantly plan is set
-by Tenantly, not the owner, so it goes through identity's `set_plan` command; between
-them the businesses show every plan: Starter, Growth, Enterprise, a month moved up a
-tier on its own, and a Custom plan.
+by Tenantly, not the owner, so it goes through identity's `set_plan` command (billing
+applies it); between them the businesses show every plan: Starter, Growth, Enterprise
+and a Custom one. A business's billing period starts when it's created, so the
+back-dated history isn't usage: the plan's meter fills as bookings are served from now on
+(docs/BILLING.md).
 
     podman compose --profile DEV up -d --build     # the stack, with seed_history baked in
     python3 scripts/seed_demo.py                   # http://localhost:8080 by default
@@ -50,6 +52,26 @@ LAST = (
 
 # Each business: who it is, where it works, who works there and what it sells.
 # Offerings: (kind, name, category, price, extra fields); resources: (type, role, names).
+# Where each demo location sits: street address and map pin. "Mobile Fleet" has no
+# storefront, so it stays off the map (the Locations page lists it as "not placed").
+PLACES: dict[str, tuple[str, float, float]] = {
+    "Chelsea": ("150 W 22nd St, New York, NY 10011", 40.7428, -73.9945),
+    "Upper West Side": ("2121 Broadway, New York, NY 10023", 40.7799, -73.9817),
+    "Williamsburg": ("94 N 6th St, Brooklyn, NY 11249", 40.7197, -73.9603),
+    "Pier 39 Dock": ("Pier 39, The Embarcadero, San Francisco, CA 94133", 37.8087, -122.4098),
+    "Sausalito Marina": ("300 Harbor Dr, Sausalito, CA 94965", 37.8636, -122.4955),
+    "North Route": ("3500 N Lincoln Ave, Chicago, IL 60657", 41.9465, -87.6740),
+    "South Route": ("1500 S Michigan Ave, Chicago, IL 60605", 41.8622, -87.6243),
+    "Evanston": ("1630 Sherman Ave, Evanston, IL 60201", 42.0464, -87.6812),
+    "Malasaña": ("Calle del Espíritu Santo 18, 28004 Madrid", 40.4250, -3.7047),
+    "Downtown Clinic": ("1600 Wynkoop St, Denver, CO 80202", 39.7528, -105.0002),
+    "Foothills Clinic": ("2525 Arapahoe Ave, Boulder, CO 80302", 40.0150, -105.2593),
+    "FiDi Hub": ("40 Wall St, New York, NY 10005", 40.7069, -74.0089),
+    "Midtown Hub": ("500 Fifth Ave, New York, NY 10110", 40.7537, -73.9810),
+    "Silver Lake Studio": ("3812 Sunset Blvd, Los Angeles, CA 90026", 34.0912, -118.2780),
+    "Downtown Bay": ("600 S Wells St, Chicago, IL 60607", 41.8743, -87.6338),
+}
+
 BUSINESSES: list[dict[str, Any]] = [
     {
         "name": "Pulse Fitness Studio",
@@ -336,13 +358,10 @@ class Api:
             raise RuntimeError(f"{method} {path} → {exc.code}: {detail}") from None
 
 
-def account(api: Api, name: str, email: str, invite: str | None = None) -> str:
-    """Sign up, or sign in if the account exists; returns the session token."""
+def account(api: Api, email: str, invite: str | None = None) -> str:
+    """Sign in (claiming `invite` if given); returns the session token. Nobody signs up: accounts are made for people."""
     extra = {"invite": invite} if invite else {}
-    try:
-        return api.call("POST", "/identity/auth/signup", {"name": name, "email": email, "password": PASSWORD, **extra})["token"]
-    except RuntimeError:
-        return api.call("POST", "/identity/auth/login", {"email": email, "password": PASSWORD, **extra})["token"]
+    return api.call("POST", "/identity/auth/login", {"email": email, "password": PASSWORD, **extra})["token"]
 
 
 def slug_email(name: str, business: str) -> str:
@@ -351,8 +370,9 @@ def slug_email(name: str, business: str) -> str:
 
 
 class Seeder:
-    def __init__(self, api: Api, spec: dict[str, Any], session: str) -> None:
+    def __init__(self, api: Api, spec: dict[str, Any], session: str, identity_container: str) -> None:
         self.api, self.spec, self.session = api, spec, session
+        self.identity_container = identity_container
         self.tz = ZoneInfo(spec["tz"])
 
     def enter(self) -> None:
@@ -370,12 +390,8 @@ class Seeder:
     def run(self) -> str:
         s = self.spec
         first, _ = s["locations"][0]
-        tenant = self.api.call(
-            "POST",
-            "/identity/tenants",
-            {"name": s["name"], "industry": s["industry"], "locationName": first, "currency": s["currency"]},
-            self.session,
-        )
+        # Businesses are opened by Tenantly (the admin console, or this command), never by their owner.
+        tenant = open_business(self.identity_container, s["name"], first, s["industry"], s["currency"])
         self.slug, self.tenant_id = tenant["slug"], tenant["id"]
         self.enter()
         print(f"\n▸ {s['name']} ({self.slug})")
@@ -403,8 +419,12 @@ class Seeder:
                 parent = areas[area]
             self.locations[name] = self.identity("POST", "/nodes", {"parentId": parent, "kind": "location", "name": name})["id"]
         opens, closes = self.spec["hours"]
-        for node_id in self.locations.values():
-            self.identity("PATCH", f"/nodes/{node_id}", {"tz": self.spec["tz"], "open": opens, "close": closes})
+        for name, node_id in self.locations.items():
+            place: dict[str, Any] = {}
+            if name in PLACES:
+                address, lat, lng = PLACES[name]
+                place = {"address": address, "lat": lat, "lng": lng}
+            self.identity("PATCH", f"/nodes/{node_id}", {"tz": self.spec["tz"], "open": opens, "close": closes, **place})
         print(f"  {len(self.locations)} locations, {len(areas)} areas")
 
     def team(self) -> None:
@@ -415,9 +435,12 @@ class Seeder:
             if role == "regional_manager":
                 scope = next((n["id"] for n in self.context["nodes"] if n["kind"] == "region"), org["id"])
             email = slug_email(name, self.spec["name"])
-            code = self.identity("POST", "/members", {"email": email, "role": role, "scopeId": scope})["invite"]
-            account(self.api, name, email, code)
-        print(f"  {len(self.spec['team'])} team members invited and joined")
+            # The owner creates their account; someone who already has one (another demo business) is invited.
+            body = {"email": email, "role": role, "scopeId": scope, "name": name, "password": PASSWORD}
+            added = self.identity("POST", "/members", body)
+            if added.get("invite"):
+                account(self.api, email, added["invite"])
+        print(f"  {len(self.spec['team'])} team members added")
 
     def policies(self) -> None:
         org = next(n for n in self.context["nodes"] if n["kind"] == "org")
@@ -585,6 +608,27 @@ def in_container(container: str, *args: str) -> str:
     return (result.stdout or result.stderr).strip()
 
 
+def open_business(container: str, name: str, location: str, industry: str, currency: str) -> dict[str, Any]:
+    """`manage.py open_business` for the demo owner (created on first use); the business as JSON."""
+    out = in_container(
+        container, "open_business", OWNER[1], name, "--location", location, "--industry", industry,
+        "--currency", currency, "--name", OWNER[0], "--password", PASSWORD,
+    )  # fmt: skip
+    try:
+        return json.loads(out.splitlines()[-1])
+    except (json.JSONDecodeError, IndexError):
+        raise RuntimeError(f"open_business {name!r}: {out}") from None
+
+
+def ensure_owner(container: str) -> None:
+    """The demo owner's account, made the way Tenantly makes owners' accounts (no sign-up)."""
+    script = (
+        "from src.models import User; from src.services import accounts; "
+        f"User.objects.filter(email={OWNER[1]!r}).exists() or accounts.create_account({OWNER[0]!r}, {OWNER[1]!r}, {PASSWORD!r})"
+    )
+    in_container(container, "shell", "-c", script)
+
+
 def history(tenant_id: str, spec: dict[str, Any], days: int, container: str) -> None:
     opens, closes = spec["hours"]
     out = in_container(
@@ -645,7 +689,8 @@ def main() -> None:
     containers = {"operations": args.container, "identity": args.identity_container, "billing": args.billing_container}
 
     api = Api(args.api)
-    session = account(api, *OWNER)
+    ensure_owner(args.identity_container)
+    session = account(api, OWNER[1])
     demo = {spec["name"] for spec in BUSINESSES}
     existing = {
         w["tenant"]["name"]: w["tenant"]
@@ -663,7 +708,7 @@ def main() -> None:
             plan(existing[spec["name"]]["slug"], spec, args.identity_container)
             continue
         try:
-            seeder = Seeder(api, spec, session)
+            seeder = Seeder(api, spec, session, args.identity_container)
             tenant_id = seeder.run()
         except RuntimeError as exc:
             sys.exit(f"  ✗ {exc}\n  Run again with --reset to start the demo businesses over.")
