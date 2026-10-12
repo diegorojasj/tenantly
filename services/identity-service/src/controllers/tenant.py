@@ -24,9 +24,15 @@ def members(request: HttpRequest, scope: str | None = None) -> dict[str, Any]:
 
 
 @router.post("/members")
-def invite(request: HttpRequest, body: InviteIn) -> dict[str, str]:
-    code = team.invite(claims_of(request), email=body.email, new_role=body.role, scope_id=body.scope_id)
-    return {"invite": code}
+def invite(request: HttpRequest, body: InviteIn) -> dict[str, Any]:
+    return team.invite(
+        claims_of(request),
+        email=body.email,
+        new_role=body.role,
+        scope_id=body.scope_id,
+        name=body.name,
+        password=body.password,
+    )
 
 
 @router.patch("/members/{member_id}", response=Ok)

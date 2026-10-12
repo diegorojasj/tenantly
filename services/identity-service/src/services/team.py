@@ -1,4 +1,9 @@
-"""The team: who belongs to the business, with which role, where."""
+"""The team: who belongs to the business, with which role, where.
+
+Someone with a Tenantly account joins through an invite code. Someone without one gets an
+account from the business's owner, who sets its first password: there's no public sign-up.
+Either way the person works under the business's Tenantly subscription, never one of their own.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,7 @@ from django.utils.translation import gettext as _
 
 from common.errors import ConflictError, ForbiddenError, InvalidError, NotFoundError
 
-from ..models import Membership, Node
+from ..models import Membership, Node, User
 from ..types.roles import OWNER
 from . import accounts, ledger, roles
 
@@ -50,6 +55,8 @@ def list_members(claims: TenantClaims, scope: str | None) -> dict[str, Any]:
         "inherited": [m for m in members if m["scopeId"] != focus and claims.within(focus, m["scopeId"])],
         "canAssign": claims.can("roles.assign"),
         "canInvite": claims.can("members.invite"),
+        # Only an owner creates accounts; anyone who invites can invite an existing one.
+        "canCreateAccounts": claims.role == OWNER,
         "viewerId": claims.user_id,
         "seats": sum(1 for m in members if m["status"] != Membership.Status.SUSPENDED),
     }
@@ -82,8 +89,15 @@ def _audit(claims: TenantClaims, action: str, target: str, scope_id: str) -> Non
 
 
 @transaction.atomic
-def invite(claims: TenantClaims, *, email: str, new_role: str, scope_id: str) -> str:
-    """Record a pending invite and return its one-time code (shown once, to the inviter)."""
+def invite(
+    claims: TenantClaims, *, email: str, new_role: str, scope_id: str, name: str = "", password: str = ""
+) -> dict[str, Any]:
+    """Add someone to the team.
+
+    An existing account gets a pending invite and its one-time code (shown once, to the inviter).
+    Anyone else needs an account first, which only an owner creates, with the name and first
+    password they hand over; that person is on the team right away.
+    """
     claims.demand("members.invite")
     email = email.strip().lower()
     if "@" not in email:
@@ -96,7 +110,9 @@ def invite(claims: TenantClaims, *, email: str, new_role: str, scope_id: str) ->
     if Membership.objects.filter(tenant_id=claims.tenant_id, email=email).exists():
         msg = _("That person is already on the team")
         raise ConflictError(msg)
-    # Always a pending invite, even for an existing account: joining takes the code.
+    if not User.objects.filter(email=email).exists():
+        return {"account": _create_member(claims, email, name, password, new_role, scope_id, granted["label"])}
+    # Always a pending invite for an existing account: joining takes the code.
     code, code_hash = accounts.invite_code()
     Membership.objects.create(
         tenant_id=claims.tenant_id,
@@ -107,7 +123,24 @@ def invite(claims: TenantClaims, *, email: str, new_role: str, scope_id: str) ->
         invite_hash=code_hash,
     )
     _audit(claims, "member.invited", f"{email} as {granted['label']}", scope_id)
-    return code
+    return {"invite": code}
+
+
+def _create_member(
+    claims: TenantClaims, email: str, name: str, password: str, new_role: str, scope_id: str, label: str
+) -> str:
+    """A team account the owner creates, active in this business at once; returns its id."""
+    if claims.role != OWNER:
+        msg = _("%(email)s has no Tenantly account yet: only the owner can create one") % {"email": email}
+        raise ForbiddenError(msg)
+    if not name.strip() or not password:
+        msg = _("%(email)s has no Tenantly account yet: give their name and a first password") % {"email": email}
+        raise InvalidError(msg)
+    owner = User.objects.filter(id=claims.user_id).first()
+    user = accounts.create_account(name, email, password, created_by=owner)
+    Membership.objects.create(tenant_id=claims.tenant_id, user=user, email=email, role=new_role, scope_id=scope_id)
+    _audit(claims, "member.account_created", f"{email} as {label}", scope_id)
+    return str(user.id)
 
 
 @transaction.atomic

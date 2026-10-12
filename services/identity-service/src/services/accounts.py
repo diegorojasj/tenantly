@@ -1,7 +1,9 @@
 """Accounts and browser sessions.
 
+There is no public sign-up: a Tenantly admin creates each owner's account (services/admin.py)
+and an owner creates their team's (services/team.py), both through `create_account`.
 Session tokens are random and only their SHA-256 is stored, so a database
-leak can't be replayed. Signing up or in with an invite code also claims the
+leak can't be replayed. Signing in with an invite code also claims the
 invite, provided it was sent to that email address.
 """
 
@@ -64,25 +66,32 @@ def claim_invite(user: User, code: str | None) -> bool:
     )
 
 
-@transaction.atomic
-def signup(name: str, email: str, password: str, invite: str | None = None) -> tuple[User, str]:
+def create_account(name: str, email: str, password: str, created_by: User | None = None) -> User:
+    """A new account with the password its creator chose; no session is opened for it.
+
+    `created_by` is the owner a team account belongs to; None for an owner (a Tenantly admin's).
+    """
     name = name.strip()
     email = _normalize(email)
     if len(name) < MIN_NAME:
-        msg = _("Enter your name")
+        msg = _("Enter their name")
         raise InvalidError(msg)
     if "@" not in email:
         msg = _("Enter a valid email address")
         raise InvalidError(msg)
     if len(password) < MIN_PASSWORD:
-        msg = _("Use at least %(n)s characters for your password") % {"n": MIN_PASSWORD}
+        msg = _("Use at least %(n)s characters for the password") % {"n": MIN_PASSWORD}
         raise InvalidError(msg)
     if User.objects.filter(email=email).exists():
-        msg = _("An account with this email already exists — sign in instead")
+        msg = _("An account with this email already exists")
         raise ConflictError(msg)
-    user = User.objects.create(name=name, email=email, password_hash=make_password(password))
-    claim_invite(user, invite)
-    return user, open_session(user)
+    return User.objects.create(name=name, email=email, password_hash=make_password(password), created_by=created_by)
+
+
+def _refuse_suspended(user: User) -> None:
+    if user.status == User.Status.SUSPENDED:
+        msg = _("This account is suspended. Contact Tenantly support to restore it")
+        raise UnauthenticatedError(msg)
 
 
 @transaction.atomic
@@ -91,6 +100,8 @@ def login(email: str, password: str, invite: str | None = None) -> tuple[User, s
     if not user or not check_password(password, user.password_hash):
         msg = _("Email or password is incorrect")
         raise UnauthenticatedError(msg)
+    # Only after the password matched, so suspension never tells a stranger the account exists.
+    _refuse_suspended(user)
     claim_invite(user, invite)
     return user, open_session(user)
 
@@ -106,4 +117,5 @@ def user_for_token(token: str) -> User:
     if not session:
         msg = _("Sign in to continue")
         raise UnauthenticatedError(msg)
+    _refuse_suspended(session.user)
     return session.user

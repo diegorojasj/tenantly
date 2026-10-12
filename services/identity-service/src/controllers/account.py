@@ -1,4 +1,8 @@
-"""Accounts, sessions and workspaces. Authenticated with a session token."""
+"""Accounts, sessions and workspaces. Authenticated with a session token.
+
+Nothing here creates an account or a business: Tenantly admins create owners and their
+businesses (controllers/admin.py), and owners create their team's accounts (controllers/tenant.py).
+"""
 
 from __future__ import annotations
 
@@ -9,7 +13,7 @@ from ninja.security import HttpBearer
 
 from common.schemas import Ok
 
-from ..schemas import InviteCodeIn, LoginIn, SignupIn, TenantIn, TokenIn
+from ..schemas import InviteCodeIn, LoginIn, TokenIn
 from ..services import accounts, tenants
 
 if TYPE_CHECKING:
@@ -30,13 +34,14 @@ session = SessionAuth()
 
 def _user(user: User) -> dict[str, Any]:
     initials = "".join(part[0] for part in user.name.split()[:2]).upper()
-    return {"id": str(user.id), "name": user.name, "email": user.email, "title": "", "initials": initials}
-
-
-@router.post("/auth/signup", auth=None)
-def signup(request: HttpRequest, body: SignupIn) -> dict[str, Any]:  # noqa: ARG001
-    user, token = accounts.signup(body.name, body.email, body.password, body.invite)
-    return {"token": token, "user": _user(user)}
+    return {
+        "id": str(user.id),
+        "name": user.name,
+        "email": user.email,
+        "title": "",
+        "initials": initials,
+        "restricted": user.status == user.Status.RESTRICTED,
+    }
 
 
 @router.post("/auth/login", auth=None)
@@ -70,19 +75,6 @@ def accept_invite(request: HttpRequest, body: InviteCodeIn) -> dict[str, bool]:
 @router.get("/templates", auth=None)
 def list_templates(request: HttpRequest) -> list[dict[str, Any]]:  # noqa: ARG001
     return tenants.templates()
-
-
-@router.post("/tenants", auth=session)
-def create_tenant(request: HttpRequest, body: TenantIn) -> dict[str, Any]:
-    tenant = tenants.create_tenant(
-        request.auth,
-        name=body.name,
-        template_id=body.template_id,
-        industry=body.industry,
-        location_name=body.location_name,
-        currency=body.currency,
-    )
-    return tenants.tenant_dict(tenant)
 
 
 @router.post("/tenants/{slug}/token", auth=session)
