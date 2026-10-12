@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-11 17:39+0000\n"
+"POT-Creation-Date: 2026-10-12 16:24+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -15,24 +15,52 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
-"1 : 2;\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
 
-#: services/charges.py:149
+#: services/catalog.py:37
+msgid "That plan isn't offered"
+msgstr "Ese plan no está disponible"
+
+#: services/charges.py:141
 msgid "That charge is outside your scope"
 msgstr "Ese cargo está fuera de tu alcance"
 
-#: services/charges.py:153
+#: services/charges.py:145
 msgid "Only open charges can be collected"
 msgstr "Solo se pueden cobrar los cargos abiertos"
 
-#: services/charges.py:156
+#: services/charges.py:148
 msgid "That charge is on an open invoice: collect the invoice instead"
 msgstr "Ese cargo está en una factura abierta: cobra la factura"
 
-#: services/charges.py:162
+#: services/charges.py:154
 msgid "Only paid charges can be refunded"
 msgstr "Solo se pueden reembolsar los cargos pagados"
+
+#: services/console.py:83 services/grants.py:41
+msgid "This business has no Tenantly subscription yet"
+msgstr "Este negocio aún no tiene suscripción a Tenantly"
+
+#: services/console.py:167 services/statements.py:116
+#: services/statements.py:150 services/statements.py:224
+msgid "No such Tenantly invoice"
+msgstr "No existe esa factura de Tenantly"
+
+#: services/grants.py:44
+msgid "Extra allowance needs the metric it adds to"
+msgstr "La asignación extra necesita la métrica a la que se suma"
+
+#: services/grants.py:47
+msgid "A discount goes from 1% to 100%"
+msgstr "Un descuento va del 1% al 100%"
+
+#: services/grants.py:50
+msgid "A grant lasts at least a day"
+msgstr "Una concesión dura al menos un día"
+
+#: services/grants.py:53
+msgid "Say why: the reason is kept with the grant"
+msgstr "Indica el motivo: se guarda con la concesión"
 
 #: services/invoices.py:68
 msgid "That invoice is outside your scope"
@@ -49,3 +77,171 @@ msgstr "Solo se pueden pagar las facturas abiertas"
 #: services/invoices.py:162
 msgid "Only open invoices can be voided"
 msgstr "Solo se pueden anular las facturas abiertas"
+
+#: services/policy.py:96
+msgid ""
+"Days overdue must run forward: limited, then restricted, then canceled (1 to "
+"365)"
+msgstr ""
+"Los días de retraso deben avanzar: limitado, luego restringido, luego "
+"cancelado (de 1 a 365)"
+
+#: services/policy.py:99
+msgid "Payment terms go from 0 to 90 days"
+msgstr "El plazo de pago va de 0 a 90 días"
+
+#: services/policy.py:102
+msgid "The small-balance threshold can't be negative"
+msgstr "El umbral de saldo pequeño no puede ser negativo"
+
+#: services/policy.py:105
+msgid "A payment extension goes from 0 to 30 days"
+msgstr "Una prórroga de pago va de 0 a 30 días"
+
+#: services/policy.py:108
+msgid ""
+"Extensions can be offered at most once a day and at least once every two "
+"years"
+msgstr ""
+"Las prórrogas pueden ofrecerse como mucho una vez al día y como poco una vez "
+"cada dos años"
+
+#: services/policy.py:111
+msgid "Retention goes from 1 to 3650 days"
+msgstr "La conservación va de 1 a 3650 días"
+
+#: services/policy.py:114
+msgid "Late usage grace goes from 0 to 336 hours"
+msgstr "El margen para uso tardío va de 0 a 336 horas"
+
+#: services/policy.py:117
+msgid "The default spend cap goes from 1 to 10 times the plan's price"
+msgstr "El tope de gasto por defecto va de 1 a 10 veces el precio del plan"
+
+#: services/policy.py:121 services/subscriptions.py:216
+msgid "Alerts go from 1% to 100% of the allowance"
+msgstr "Las alertas van del 1 % al 100 % de lo incluido"
+
+#: services/policy.py:124
+msgid "Say why: the reason is kept with the policy"
+msgstr "Indica el motivo: se guarda con la política"
+
+#: services/policy.py:148
+msgid "Nothing changed: the policy already reads like this"
+msgstr "Nada cambió: la política ya dice esto"
+
+#: services/policy.py:162
+msgid ""
+"Someone changed the policy in the meantime: look again before changing it"
+msgstr "Alguien cambió la política mientras tanto: revísala antes de cambiarla"
+
+#: services/repricing.py:33
+msgid "Overage needs an allowance to start from"
+msgstr "El exceso necesita un margen incluido desde el que contar"
+
+#: services/repricing.py:36
+msgid "The cap can't be below the plan's price"
+msgstr "El tope no puede ser menor que el precio del plan"
+
+#: services/repricing.py:39
+msgid "Say why: the reason is kept with the price change"
+msgstr "Indica el motivo: se guarda con el cambio de precio"
+
+#: services/repricing.py:80
+msgid "No such public plan version"
+msgstr "Esa versión pública del plan no existe"
+
+#: services/repricing.py:89
+msgid "Only the price list on sale can be changed"
+msgstr "Solo puede cambiarse la lista de precios a la venta"
+
+#: services/repricing.py:93
+msgid "Nothing changed: the plan is already priced like this"
+msgstr "Nada cambió: el plan ya tiene estos precios"
+
+#: services/statements.py:121
+msgid "That invoice was voided"
+msgstr "Esa factura fue anulada"
+
+#: services/stripe.py:67
+msgid "The card processor is unavailable — try again in a moment"
+msgstr ""
+"El procesador de tarjetas no está disponible; inténtalo de nuevo en un "
+"momento"
+
+#: services/stripe.py:74
+msgid "The card processor refused the request"
+msgstr "El procesador de tarjetas rechazó la solicitud"
+
+#: services/stripe.py:86
+msgid ""
+"Card payments aren't available yet: Tenantly invoices are paid by transfer"
+msgstr ""
+"Aún no se puede pagar con tarjeta: las facturas de Tenantly se pagan por "
+"transferencia"
+
+#: services/stripe.py:90
+msgid "That return address isn't Tenantly's"
+msgstr "Esa dirección de regreso no es de Tenantly"
+
+#: services/stripe.py:167
+msgid "Unsigned webhook"
+msgstr "Webhook sin firma"
+
+#: services/stripe.py:171
+msgid "Bad webhook signature"
+msgstr "Firma de webhook inválida"
+
+#: services/stripe.py:174
+msgid "Stale webhook"
+msgstr "Webhook caducado"
+
+#: services/subscriptions.py:107
+msgid "Someone changed the plan in the meantime: look again before changing it"
+msgstr "Alguien cambió el plan mientras tanto: revísalo antes de cambiarlo"
+
+#: services/subscriptions.py:114
+msgid "This subscription has ended: reactivate it first"
+msgstr "Esta suscripción terminó: reactívala primero"
+
+#: services/subscriptions.py:131
+msgid "You're already on this plan"
+msgstr "Ya tienes este plan"
+
+#: services/subscriptions.py:170
+msgid "The plan already ends with this period"
+msgstr "El plan ya termina con este periodo"
+
+#: services/subscriptions.py:190
+msgid "The plan isn't ending"
+msgstr "El plan no está por terminar"
+
+#: services/subscriptions.py:193
+msgid "Pay the open Tenantly invoices first: that reactivates the plan"
+msgstr "Paga primero las facturas abiertas de Tenantly: eso reactiva el plan"
+
+#: services/subscriptions.py:220
+msgid "Your plan already caps every period at the next plan's price"
+msgstr "Tu plan ya limita cada periodo al precio del plan siguiente"
+
+#: services/subscriptions.py:223
+msgid "The spend cap can't be below the plan's price"
+msgstr "El tope de gasto no puede ser menor que el precio del plan"
+
+#: services/subscriptions.py:241
+msgid "No extension is available right now"
+msgstr "Ahora no hay una prórroga disponible"
+
+#: services/subscriptions.py:287
+msgid "A Custom plan needs its terms, and only a Custom plan takes them"
+msgstr ""
+"Un plan Custom necesita sus condiciones, y solo un plan Custom las lleva"
+
+msgid "Only the business's owner can change its Tenantly plan"
+msgstr "Solo el propietario del negocio puede cambiar su plan de Tenantly"
+
+msgid "The plan ends with this period: resume it before changing plans"
+msgstr "El plan termina con este periodo: reanúdalo antes de cambiar de plan"
+
+msgid "No plan change is waiting for the renewal"
+msgstr "No hay ningún cambio de plan pendiente para la renovación"
