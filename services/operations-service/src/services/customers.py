@@ -164,6 +164,7 @@ def profile(claims: TenantClaims, customer_id: str) -> dict[str, Any]:
 @transaction.atomic
 def create(claims: TenantClaims, body: CustomerIn) -> Customer:
     claims.demand("bookings.manage")
+    claims.allow("customers.add")
     claims.require_location(body.location_id)
     name = body.name.strip()
     if len(name) < MIN_NAME:

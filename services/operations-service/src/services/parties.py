@@ -23,7 +23,7 @@ from common.errors import InvalidError, NotFoundError
 from common.internal import audit
 
 from ..models import Account, Customer, Offering, Subject, Subscription
-from . import clock, fields, money
+from . import clock, fields, money, usage
 
 if TYPE_CHECKING:
     from datetime import date
@@ -228,6 +228,7 @@ def active_subscriptions(customer: Customer, *, lock: bool = False) -> list[Subs
 def sell(claims: TenantClaims, customer: Customer, offering_id: str) -> Subscription:
     """Add a plan to the customer's subscriptions; selling one they already hold renews or tops it up."""
     claims.demand("payments.collect")
+    claims.allow("bookings.add")
     plan = Offering.objects.filter(
         tenant_id=claims.tenant_id, id=offering_id, time=Offering.Time.NONE, active=True
     ).first()
@@ -264,6 +265,7 @@ def sell(claims: TenantClaims, customer: Customer, offering_id: str) -> Subscrip
         on=today,
         paid=True,
     )
+    usage.served(claims, customer, "plan.sold", f"sale:{sub.id}:{today.isoformat()}")
     audit(
         claims, f"plan.{verb.replace(' ', '_')}", "billing", f"{plan.name} → {customer.name}", str(customer.location_id)
     )

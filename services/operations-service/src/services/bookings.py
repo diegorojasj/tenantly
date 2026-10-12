@@ -20,7 +20,7 @@ from common.errors import ConflictError, ForbiddenError, InvalidError, NotFoundE
 from common.internal import audit
 
 from ..models import Attendance, Booking, Customer, Offering, Resource, Subject
-from . import clock, documents, fields, fulfilment, money, parties, policies, shape
+from . import clock, documents, fields, fulfilment, money, parties, policies, shape, usage
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -310,6 +310,7 @@ def list_range(claims: TenantClaims, scope: str | None, range_: str) -> dict[str
 def create(claims: TenantClaims, body: BookingIn) -> Booking:
     """One customer, one slot: an appointment, a rental, a visit — any offering for one customer at a time."""
     claims.demand("bookings.manage")
+    claims.allow("bookings.add")
     claims.require_location(body.location_id)
     offering = _offering(claims, body.offering_id, _single)
     customer = _customer(claims, body.customer_id)
@@ -359,6 +360,7 @@ def create(claims: TenantClaims, body: BookingIn) -> Booking:
 def schedule_session(claims: TenantClaims, body: SessionIn) -> list[Booking]:
     """Put a class or tour on the calendar, optionally repeating weekly."""
     claims.demand("bookings.manage")
+    claims.allow("bookings.add")
     claims.require_location(body.location_id)
     offering = _offering(claims, body.offering_id, _session)
     picks = [body.staff_id or "", *body.resource_ids]
@@ -402,6 +404,7 @@ def schedule_session(claims: TenantClaims, body: SessionIn) -> list[Booking]:
 @transaction.atomic
 def join(claims: TenantClaims, booking_id: str, customer_id: str) -> Booking:
     claims.demand("bookings.manage")
+    claims.allow("bookings.add")
     session = _get(claims, booking_id)
     if session.customer_id or not session.offering.shared:
         msg = _("That isn't a class session")
@@ -433,7 +436,8 @@ def join(claims: TenantClaims, booking_id: str, customer_id: str) -> Booking:
             paid=True,
             booking_id=str(session.id),
         )
-    Attendance.objects.create(booking=session, customer=customer, subscription=pack)
+    seat = Attendance.objects.create(booking=session, customer=customer, subscription=pack)
+    usage.served(claims, customer, "attendance", f"attendance:{seat.id}")
     audit(
         claims,
         "booking.joined",
@@ -458,6 +462,17 @@ def _fee(claims: TenantClaims, booking: Booking, reason: str) -> None:
             paid=False,
             booking_id=str(booking.id),
         )
+
+
+def _usage(claims: TenantClaims, booking: Booking, status: str) -> None:
+    """Served (counts the customer on Tenantly's bill), handled, or a class called off."""
+    if status in {"checked_in", "completed"} and booking.customer:
+        usage.served(claims, booking.customer, f"booking.{status}", f"booking:{booking.id}")
+    if status == "completed":
+        usage.completed(claims, booking)
+    if status == "cancelled" and not booking.customer_id:
+        for seat in booking.attendances.select_related("customer"):
+            usage.unserved(claims, seat.customer, f"attendance:{seat.id}")
 
 
 @transaction.atomic
@@ -498,6 +513,7 @@ def set_status(claims: TenantClaims, booking_id: str, status: str) -> Booking:
             _fee(claims, booking, "Late cancellation fee")
         # Seats paid from a pack get their credit back when a class is called off.
         parties.return_credits(booking)
+    _usage(claims, booking, status)
     booking.status = status
     booking.save(update_fields=["status"])
     who = booking.customer.name if booking.customer else booking.offering.name

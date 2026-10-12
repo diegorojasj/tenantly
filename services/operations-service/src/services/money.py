@@ -31,9 +31,12 @@ log = logging.getLogger(__name__)
 DISPATCH_BATCH = 200
 
 
-def _enqueue(claims: TenantClaims, path: str, body: dict[str, Any]) -> None:
+def enqueue(claims: TenantClaims, path: str, body: dict[str, Any]) -> None:
+    """Write an event for billing (a charge, a refund, usage) to go out after this transaction commits."""
     MoneyEvent.objects.create(tenant_id=claims.tenant_id, path=path, body={"tenantId": claims.tenant_id, **body})
-    transaction.on_commit(dispatch, robust=True)
+    # One send after commit covers every event this transaction wrote.
+    if not any(entry[1] is dispatch for entry in transaction.get_connection().run_on_commit):
+        transaction.on_commit(dispatch, robust=True)
 
 
 def raise_charge(  # noqa: PLR0913 - mirrors the charge's own fields
@@ -49,7 +52,7 @@ def raise_charge(  # noqa: PLR0913 - mirrors the charge's own fields
     booking_id: str | None = None,
 ) -> None:
     """Filed under the location that did the work, not the customer's home location."""
-    _enqueue(
+    enqueue(
         claims,
         "/internal/charges",
         {
@@ -68,7 +71,7 @@ def raise_charge(  # noqa: PLR0913 - mirrors the charge's own fields
 
 
 def refund_booking(claims: TenantClaims, booking_id: str) -> None:
-    _enqueue(claims, f"/internal/bookings/{booking_id}/refund", {})
+    enqueue(claims, f"/internal/bookings/{booking_id}/refund", {})
 
 
 def dispatch(limit: int = DISPATCH_BATCH) -> int:
