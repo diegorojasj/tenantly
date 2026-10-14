@@ -18,9 +18,12 @@ import type {
   Customer,
   DocumentLevel,
   DocumentType,
+  Downtime,
+  DowntimeReason,
   FieldDef,
   Insights,
   Invoice,
+  LedgerEntry,
   Money,
   Offering,
   OfferingKind,
@@ -61,7 +64,12 @@ export const getCalendar = GET(async (slug: string, scope: string, day: string) 
     close: number;
     /** Zone the day and hours are in (the location's, or UTC across zones). */
     tz: string;
-    board: { resources: Array<Resource>; bookings: Array<Booking> } | null;
+    board: {
+      resources: Array<Resource>;
+      bookings: Array<Booking>;
+      /** Clipped to the day; a null resourceId covers the whole board (an offering or the location). */
+      downtimes: Array<{ id: string; resourceId: string | null; offeringId: string | null; reason: DowntimeReason; note: string; start: string; end: string }>;
+    } | null;
     sites: Array<{ node: ScopeNode; bookings: number; utilization: number }>;
   }>(slug, scope, 'operations', '/calendar', { day });
 });
@@ -117,7 +125,7 @@ export const getAvailability = GET(
 // listed: the drawer closes as the mutation lands, and refreshing a query
 // whose only reader is unmounting left the router's transition unsettled.
 // The drawer fetches them fresh every time it opens instead (staleTime 0).
-const BOOKING_KEYS = ['calendar', 'bookings', 'today', 'customers', 'customer', 'audit'];
+const BOOKING_KEYS = ['calendar', 'bookings', 'today', 'customers', 'customer', 'downtimes', 'audit'];
 
 export async function createBooking(input: {
   org: string;
@@ -314,7 +322,14 @@ export const getResources = GET(async (slug: string, scope: string) => {
   return read<{
     canEdit: boolean;
     locations: Array<ScopeNode>;
-    resources: Array<{ resource: Resource; locationName: string; utilization: number; next: string | null }>;
+    resources: Array<{
+      resource: Resource;
+      locationName: string;
+      utilization: number;
+      next: string | null;
+      /** Why it is out right now (its own downtime, else its location's). */
+      downtime: DowntimeReason | null;
+    }>;
   }>(slug, scope, 'operations', '/resources');
 });
 
@@ -337,6 +352,62 @@ export async function setResourceStatus(input: { org: string; resourceId: string
   'use server';
   await write(input.org, 'operations', `/resources/${input.resourceId}/status`, { status: input.status });
   return reload({ revalidate: ['resources', 'calendar', 'today', 'audit'] });
+}
+
+// --------------------------------------------------------------- downtime --
+
+export const getDowntimes = GET(async (slug: string, scope: string) => {
+  'use server';
+  return read<{
+    canEdit: boolean;
+    canRecordMoney: boolean;
+    currency: string;
+    reasons: Array<{ key: DowntimeReason; label: string }>;
+    downtimes: Array<Downtime>;
+  }>(slug, scope, 'operations', '/downtimes');
+});
+
+const AFTER_DOWNTIME = ['downtimes', 'resources', 'calendar', 'today', 'bookings', 'audit'];
+
+/** Take a resource, an offering at a location, or the whole location out of booking for a while. */
+export async function createDowntime(input: {
+  org: string;
+  locationId?: string;
+  resourceId?: string;
+  offeringId?: string;
+  reason: DowntimeReason;
+  note?: string;
+  start?: string;
+  end?: string;
+}) {
+  'use server';
+  const { org, ...body } = input;
+  await write(org, 'operations', '/downtimes', body);
+  return reload({ revalidate: AFTER_DOWNTIME });
+}
+
+/** Back in use now; one that hasn't started yet is withdrawn. */
+export async function endDowntime(input: { org: string; downtimeId: string }) {
+  'use server';
+  await write(input.org, 'operations', `/downtimes/${input.downtimeId}/end`);
+  return reload({ revalidate: AFTER_DOWNTIME });
+}
+
+/** What a downtime cost or earned; income from a customer is charged to them. */
+export async function recordDowntimeMoney(input: {
+  org: string;
+  downtimeId: string;
+  kind: 'income' | 'expense';
+  amount: string;
+  description?: string;
+  category?: string;
+  customerId?: string;
+  on?: string;
+}) {
+  'use server';
+  const { org, downtimeId, ...body } = input;
+  await write(org, 'operations', `/downtimes/${downtimeId}/money`, body);
+  return reload({ revalidate: ['downtimes', 'ledger', 'payments', 'customers', 'customer', 'audit'] });
 }
 
 // --------------------------------------------------------------- payments --
@@ -387,6 +458,42 @@ export async function settleCharge(input: { org: string; chargeId: string; actio
   'use server';
   await write(input.org, 'billing', `/charges/${input.chargeId}/${input.action}`);
   return reload({ revalidate: ['payments', 'customers', 'customer', 'today', 'calendar', 'bookings', 'insights', 'audit'] });
+}
+
+// ------------------------------------------- expenses and other income --
+
+export const getLedger = GET(async (slug: string, scope: string) => {
+  'use server';
+  return read<{
+    canRecord: boolean;
+    currency: string;
+    from: string;
+    to: string;
+    totals: { revenue: Money; income: Money; expense: Money; net: Money };
+    byCategory: Array<{ kind: LedgerEntry['kind']; category: string; amount: Money }>;
+    entries: Array<LedgerEntry>;
+  }>(slug, scope, 'billing', '/ledger');
+});
+
+export async function addLedgerEntry(input: {
+  org: string;
+  locationId: string;
+  kind: LedgerEntry['kind'];
+  category: string;
+  description?: string;
+  amount: string;
+  on?: string;
+}) {
+  'use server';
+  const { org, ...body } = input;
+  await write(org, 'billing', '/ledger', body);
+  return reload({ revalidate: ['ledger', 'downtimes', 'audit'] });
+}
+
+export async function voidLedgerEntry(input: { org: string; entryId: string }) {
+  'use server';
+  await write(input.org, 'billing', `/ledger/${input.entryId}/void`);
+  return reload({ revalidate: ['ledger', 'downtimes', 'audit'] });
 }
 
 // --------------------------------------------------------------- insights --

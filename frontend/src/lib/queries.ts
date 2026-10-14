@@ -38,9 +38,11 @@ import {
   getCatalog,
   getCustomer,
   getCustomers,
+  getDowntimes,
   getInsights,
   getInvoice,
   getInvoices,
+  getLedger,
   getPayments,
   getResources,
   getToday,
@@ -105,6 +107,12 @@ export const catalogQuery = (org: string, scope = '') =>
 
 export const resourcesQuery = (org: string, scope = '') =>
   queryOptions({ queryKey: ['resources', org, scope], queryFn: () => getResources(org, scope) });
+
+export const downtimesQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['downtimes', org, scope], queryFn: () => getDowntimes(org, scope) });
+
+export const ledgerQuery = (org: string, scope = '') =>
+  queryOptions({ queryKey: ['ledger', org, scope], queryFn: () => getLedger(org, scope) });
 
 export const paymentsQuery = (org: string, scope = '') =>
   queryOptions({ queryKey: ['payments', org, scope], queryFn: () => getPayments(org, scope) });

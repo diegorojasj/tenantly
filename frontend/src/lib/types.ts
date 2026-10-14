@@ -442,6 +442,59 @@ export interface Booking {
   price: Money;
   currency: string;
   paid: boolean;
+  /** The downtime it falls in, if one was recorded after it was booked: the desk moves or cancels it. */
+  downtime: DowntimeFlag | null;
+}
+
+/** Why something can't be booked for a while. */
+export type DowntimeReason = 'maintenance' | 'repair' | 'unfit' | 'absence' | 'closure' | 'other';
+export type DowntimeTarget = 'resource' | 'offering' | 'location';
+
+export interface DowntimeFlag {
+  id: string;
+  reason: DowntimeReason;
+  /** The resource, offering or location that is down. */
+  what: string;
+  target: DowntimeTarget;
+}
+
+export interface LedgerEntry {
+  id: string;
+  locationId: string;
+  kind: 'income' | 'expense';
+  category: string;
+  description: string;
+  amount: Money;
+  currency: string;
+  date: string;
+  source: 'manual' | 'downtime';
+  refId: string | null;
+  /** Income charged to a customer: the charge counts it, so totals leave it out. */
+  charged: boolean;
+  recordedBy: string;
+  voided: boolean;
+}
+
+/** A resource, an offering at a location, or a whole location out of use for a while. */
+export interface Downtime {
+  id: string;
+  locationId: string;
+  locationName: string;
+  target: DowntimeTarget;
+  resourceId: string | null;
+  offeringId: string | null;
+  what: string;
+  reason: DowntimeReason;
+  note: string;
+  /** Wall-clock stamps at the location; no end means until someone ends it. */
+  start: string;
+  end: string | null;
+  tz: string;
+  state: 'upcoming' | 'now' | 'over';
+  recordedBy: string;
+  /** Live bookings inside the window, still to be moved or cancelled. */
+  clashes: Array<{ id: string; offeringName: string; customerName: string; start: string; status: BookingStatus }>;
+  money: { income: Money; expense: Money; entries: Array<LedgerEntry> };
 }
 
 /** A plan a customer holds; they may hold several. */
