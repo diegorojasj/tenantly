@@ -13,6 +13,7 @@ import { t as tr } from '../lib/i18n';
 import { useCurrency } from '../lib/scope';
 import { matching, requirementName, resourceType } from '../lib/fulfilment';
 import { createBooking, joinSession, scheduleSession } from '../lib/ops';
+import type { getBookingOptions } from '../lib/ops';
 import { availabilityQuery, bookingOptionsQuery } from '../lib/queries';
 import { notify } from '../lib/toast';
 import type { Offering, Resource, ScopeNode, Template } from '../lib/types';
@@ -29,6 +30,9 @@ function Missing(props: { what: string; where: string }) {
   );
 }
 
+
+/** What the drawer can book here, read once by BookingModes and handed to each form. */
+type BookingOptions = Awaited<ReturnType<typeof getBookingOptions>>;
 
 /** One select per picked resource: requirement × quantity, each offering the resources that match it. */
 interface PickSlot {
@@ -145,6 +149,10 @@ export default function NewBooking(props: {
  * the other's tabs, and one that sells nothing yet is pointed to its catalog.
  */
 function BookingModes(props: { org: string; template: Template; siteId: string; day: string; onDone: () => void }) {
+  // The only subscription to the options: each form reads them from here. A
+  // second useQuery on the same key inside a form notified this one on mount,
+  // which recreated the form, which subscribed again — a synchronous remount
+  // loop that froze the tab until the browser ran out of memory.
   const options = useQuery(() => bookingOptionsQuery(props.org, props.siteId));
   const singles = () => options.data.offerings.length > 0;
   const classes = () => options.data.classes.length > 0;
@@ -181,13 +189,13 @@ function BookingModes(props: { org: string; template: Template; siteId: string; 
         </div>
       </Show>
       <Show when={mode() === 'single'}>
-        <SlotForm org={props.org} template={props.template} siteId={props.siteId} day={props.day} onDone={props.onDone} />
+        <SlotForm options={options.data} org={props.org} template={props.template} siteId={props.siteId} day={props.day} onDone={props.onDone} />
       </Show>
       <Show when={mode() === 'session'}>
-        <JoinForm org={props.org} template={props.template} siteId={props.siteId} onDone={props.onDone} onSchedule={() => setMode('schedule')} />
+        <JoinForm options={options.data} org={props.org} template={props.template} siteId={props.siteId} onDone={props.onDone} onSchedule={() => setMode('schedule')} />
       </Show>
       <Show when={mode() === 'schedule'}>
-        <ScheduleForm org={props.org} template={props.template} siteId={props.siteId} day={props.day} onDone={props.onDone} />
+        <ScheduleForm options={options.data} org={props.org} template={props.template} siteId={props.siteId} day={props.day} onDone={props.onDone} />
       </Show>
     </Show>
   );
@@ -229,13 +237,12 @@ function CustomerPicker(props: {
   );
 }
 
-function SlotForm(props: { org: string; template: Template; siteId: string; day: string; onDone: () => void }) {
-  const options = useQuery(() => bookingOptionsQuery(props.org, props.siteId));
+function SlotForm(props: { options: BookingOptions; org: string; template: Template; siteId: string; day: string; onDone: () => void }) {
   const currency = useCurrency();
   const [offeringId, setOfferingId] = createSignal('', { name: 'bookingOffering' });
-  const offering = () => options.data.offerings.find((o) => o.id === offeringId()) ?? options.data.offerings[0];
+  const offering = () => props.options.offerings.find((o) => o.id === offeringId()) ?? props.options.offerings[0];
   const [chosen, setChosen] = createSignal<Record<string, string>>({}, { name: 'bookingPicks' });
-  const slots = () => pickSlots(props.template, offering(), options.data.resources, chosen());
+  const slots = () => pickSlots(props.template, offering(), props.options.resources, chosen());
   const picks = () => slots().flatMap((s) => (s.id ? [s.id] : []));
   const assigned = () => assignedText(props.template, offering());
   const [day, setDay] = createSignal(() => props.day, { name: 'bookingDay' });
@@ -253,16 +260,16 @@ function SlotForm(props: { org: string; template: Template; siteId: string; day:
   const canBook = () => !free.isPlaceholderData && free.data.slots.length > 0;
   // Offerings that serve a subject (a pet, a vehicle) book one of the chosen customer's.
   const [customerId, setCustomerId] = createSignal('', { name: 'bookingCustomer' });
-  const subjectType = () => options.data.subjectTypes.find((t) => t.key === offering()?.subjectType);
+  const subjectType = () => props.options.subjectTypes.find((t) => t.key === offering()?.subjectType);
   const subjects = () =>
-    options.data.customers.find((c) => c.id === customerId())?.subjects.filter((x) => x.type === offering()?.subjectType) ?? [];
+    props.options.customers.find((c) => c.id === customerId())?.subjects.filter((x) => x.type === offering()?.subjectType) ?? [];
 
   const book = useMutation(() => ({
     mutationFn: (input: Parameters<typeof createBooking>[0]) => createBooking(defined(input)),
     onSuccess: (_result, input) => {
-      const who = options.data.customers.find((c) => c.id === input.customerId)?.name ?? props.template.terms.customer;
+      const who = props.options.customers.find((c) => c.id === input.customerId)?.name ?? props.template.terms.customer;
       notify(
-        options.data.approval
+        props.options.approval
           ? tr('booking.toastRequested', { who, bookings: props.template.terms.bookings })
           : tr('booking.toastBooked', { offering: offering()?.name ?? '', who, day: fmtDay(input.start.slice(0, 10)).split(',')[0], time: input.start.slice(11) }),
       );
@@ -271,11 +278,11 @@ function SlotForm(props: { org: string; template: Template; siteId: string; day:
   }));
 
   const missing = () =>
-    !options.data.offerings.length
+    !props.options.offerings.length
       ? { what: tr('booking.whatSomething'), where: tr('booking.whereCatalog') }
-      : missingPick(props.template, offering(), options.data.resources)
-        ? missingPick(props.template, offering(), options.data.resources)
-        : !options.data.customers.length
+      : missingPick(props.template, offering(), props.options.resources)
+        ? missingPick(props.template, offering(), props.options.resources)
+        : !props.options.customers.length
           ? { what: props.template.terms.customers.toLowerCase(), where: props.template.terms.customers }
           : null;
 
@@ -296,18 +303,18 @@ function SlotForm(props: { org: string; template: Template; siteId: string; day:
           units: spans() ? units() : undefined,
           resourceIds: picks(),
           subjectId: subjectType() ? String(data.get('subject') ?? '') : undefined,
-          fields: options.data.bookingFields.length ? readFields(options.data.bookingFields, data, 'bf-') : undefined,
+          fields: props.options.bookingFields.length ? readFields(props.options.bookingFields, data, 'bf-') : undefined,
         });
       }}
     >
-      <Show when={options.data.approval}>
+      <Show when={props.options.approval}>
         <p class="muted hint">{tr('booking.approvalHint', { bookings: props.template.terms.bookings.toLowerCase() })}</p>
       </Show>
 
       <label>
         <span class="form-label">{tr('booking.stepWhat')}</span>
         <select value={offering()?.id} onChange={(event) => setOfferingId(event.currentTarget.value)}>
-          <For each={options.data.offerings}>
+          <For each={props.options.offerings}>
             {(o) => (
               <option value={o.id}>
                 {o.name} · {perUnit(o.unit) ? `${fmtMoney(o.price, currency())}${perUnit(o.unit)}` : `${fmtDuration(o.minutes)} · ${fmtMoney(o.price, currency())}`}
@@ -364,7 +371,7 @@ function SlotForm(props: { org: string; template: Template; siteId: string; day:
           <input type="date" value={day()} required onChange={(event) => setDay(event.currentTarget.value)} />
         </label>
         <label>
-          <span class="form-label">{tr('booking.freeTimes')}{options.data.tz === 'UTC' ? '' : ` · ${zoneName(options.data.tz)}`}</span>
+          <span class="form-label">{tr('booking.freeTimes')}{props.options.tz === 'UTC' ? '' : ` · ${zoneName(props.options.tz)}`}</span>
           <Show when={free.data.slots.length} fallback={<span class="slots-empty">{free.data.reason}</span>}>
             <select name="time" required disabled={free.isPlaceholderData}>
               <For each={free.data.slots}>{(slot) => <option value={slot}>{slot}</option>}</For>
@@ -373,7 +380,7 @@ function SlotForm(props: { org: string; template: Template; siteId: string; day:
         </label>
       </div>
 
-      <CustomerPicker template={props.template} customers={options.data.customers} step="4 · " onPick={setCustomerId} />
+      <CustomerPicker template={props.template} customers={props.options.customers} step="4 · " onPick={setCustomerId} />
       <Show when={subjectType()}>
         {(kind) => (
           <label>
@@ -389,34 +396,33 @@ function SlotForm(props: { org: string; template: Template; siteId: string; day:
           </label>
         )}
       </Show>
-      <For each={options.data.bookingFields}>{(f) => <FieldInput def={f} prefix="bf-" />}</For>
+      <For each={props.options.bookingFields}>{(f) => <FieldInput def={f} prefix="bf-" />}</For>
 
       <Show when={book.error}>{(error) => <p role="alert" class="error">{error()?.message}</p>}</Show>
       <button type="submit" class="btn" disabled={book.isPending || !offering() || !canBook()}>
-        {options.data.approval ? tr('booking.sendRequest') : tr('booking.bookButton', { booking: props.template.terms.booking.toLowerCase() })}
+        {props.options.approval ? tr('booking.sendRequest') : tr('booking.bookButton', { booking: props.template.terms.booking.toLowerCase() })}
       </button>
     </form>
     </Show>
   );
 }
 
-function JoinForm(props: { org: string; template: Template; siteId: string; onDone: () => void; onSchedule: () => void }) {
-  const options = useQuery(() => bookingOptionsQuery(props.org, props.siteId));
+function JoinForm(props: { options: BookingOptions; org: string; template: Template; siteId: string; onDone: () => void; onSchedule: () => void }) {
   const join = useMutation(() => ({
     mutationFn: (input: { bookingId: string; customerId: string }) => joinSession({ org: props.org, ...input }),
     onSuccess: (_result, input) => {
-      const session = options.data.sessions.find((x) => x.id === input.bookingId);
-      const who = options.data.customers.find((c) => c.id === input.customerId)?.name ?? props.template.terms.customer;
+      const session = props.options.sessions.find((x) => x.id === input.bookingId);
+      const who = props.options.customers.find((c) => c.id === input.customerId)?.name ?? props.template.terms.customer;
       notify(tr('booking.toastJoined', { who, session: session?.offeringName ?? tr('booking.theSession'), time: session?.start.slice(11) ?? '' }).trim());
       props.onDone();
     },
   }));
   return (
     <Show
-      when={options.data.sessions.length && options.data.customers.length}
+      when={props.options.sessions.length && props.options.customers.length}
       fallback={
         <Show
-          when={options.data.sessions.length}
+          when={props.options.sessions.length}
           fallback={
             <div class="form">
               <p class="slots-empty">{tr('booking.noClasses')}</p>
@@ -441,7 +447,7 @@ function JoinForm(props: { org: string; template: Template; siteId: string; onDo
       <label>
         <span class="form-label">{tr('booking.sessionLabel')}</span>
         <select name="session" required>
-          <For each={options.data.sessions}>
+          <For each={props.options.sessions}>
             {(s) => (
               <option value={s.id} disabled={s.attendees.length >= s.capacity}>
                 {fmtDay(s.start.slice(0, 10)).split(',')[0].slice(0, 3)} {s.start.slice(11)} · {s.offeringName} ·{' '}
@@ -451,7 +457,7 @@ function JoinForm(props: { org: string; template: Template; siteId: string; onDo
           </For>
         </select>
       </label>
-      <CustomerPicker template={props.template} customers={options.data.customers} />
+      <CustomerPicker template={props.template} customers={props.options.customers} />
       <Show when={join.error}>{(error) => <p role="alert" class="error">{error()?.message}</p>}</Show>
       <button type="submit" class="btn" disabled={join.isPending}>
         {tr('booking.addToSession')}
@@ -462,13 +468,12 @@ function JoinForm(props: { org: string; template: Template; siteId: string; onDo
 }
 
 /** Put a class or tour on the calendar, optionally every week. */
-function ScheduleForm(props: { org: string; template: Template; siteId: string; day: string; onDone: () => void }) {
-  const options = useQuery(() => bookingOptionsQuery(props.org, props.siteId));
+function ScheduleForm(props: { options: BookingOptions; org: string; template: Template; siteId: string; day: string; onDone: () => void }) {
   const [classId, setClassId] = createSignal('', { name: 'scheduleClass' });
-  const offering = () => options.data.classes.find((c) => c.id === classId()) ?? options.data.classes[0];
+  const offering = () => props.options.classes.find((c) => c.id === classId()) ?? props.options.classes[0];
   const [chosen, setChosen] = createSignal<Record<string, string>>({}, { name: 'schedulePicks' });
-  const pickList = () => pickSlots(props.template, offering(), options.data.resources, chosen());
-  const lacking = () => missingPick(props.template, offering(), options.data.resources);
+  const pickList = () => pickSlots(props.template, offering(), props.options.resources, chosen());
+  const lacking = () => missingPick(props.template, offering(), props.options.resources);
   const slots = () => {
     const list: Array<string> = [];
     for (let m = props.template.open; m < props.template.close; m += 15) {
@@ -480,14 +485,14 @@ function ScheduleForm(props: { org: string; template: Template; siteId: string; 
     mutationFn: (input: Omit<Parameters<typeof scheduleSession>[0], 'org'>) =>
       scheduleSession({ org: props.org, ...input }),
     onSuccess: (_r, input) => {
-      const name = options.data.classes.find((c) => c.id === input.offeringId)?.name ?? tr('booking.classLabel');
+      const name = props.options.classes.find((c) => c.id === input.offeringId)?.name ?? tr('booking.classLabel');
       notify(input.repeatWeeks > 1 ? tr('booking.toastScheduledWeekly', { name, count: input.repeatWeeks }) : tr('booking.toastScheduled', { name }));
       props.onDone();
     },
   }));
   return (
     <Show
-      when={options.data.classes.length && !lacking()}
+      when={props.options.classes.length && !lacking()}
       fallback={<Missing what={lacking()?.what ?? tr('booking.whatClass')} where={lacking()?.where ?? tr('booking.whereCatalog')} />}
     >
       <form
@@ -507,7 +512,7 @@ function ScheduleForm(props: { org: string; template: Template; siteId: string; 
         <label>
           <span class="form-label">{tr('booking.classLabel')}</span>
           <select value={offering()?.id} onChange={(event) => setClassId(event.currentTarget.value)} required>
-            <For each={options.data.classes}>
+            <For each={props.options.classes}>
               {(c) => (
                 <option value={c.id}>
                   {c.name} · {fmtDuration(c.minutes)} · {tr('booking.spots', { count: c.capacity ?? 0 })}
