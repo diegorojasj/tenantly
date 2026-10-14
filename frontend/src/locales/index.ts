@@ -9,7 +9,9 @@ import booking from './booking';
 import customers from './customers';
 import catalog from './catalog';
 import resources from './resources';
+import downtime from './downtime';
 import payments from './payments';
+import ledger from './ledger';
 import insights from './insights';
 import billing from './billing';
 import audit from './audit';
@@ -33,7 +35,9 @@ const areas = {
   customers,
   catalog,
   resources,
+  downtime,
   payments,
+  ledger,
   insights,
   billing,
   audit,
