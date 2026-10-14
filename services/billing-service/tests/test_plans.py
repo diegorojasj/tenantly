@@ -279,6 +279,16 @@ def test_existing_businesses_keep_their_prices_and_a_custom_plan_is_their_own(
     assert PlanVersion.objects.get(id=custom["id"]).tenant_id == uuid.UUID(other["tenant"])
 
 
+def test_each_business_numbers_its_own_custom_plan_versions(clock: Clock) -> None:
+    first, second = uuid.uuid4(), uuid.uuid4()
+    a1 = catalog.custom(first, Decimal("149.00"), 300, None, clock.at)
+    b1 = catalog.custom(second, Decimal("250.00"), 1_000, None, clock.at)
+    a2 = catalog.custom(first, Decimal("159.00"), 300, None, clock.at)
+    assert [(v.version, v.tenant_id) for v in (a1, b1, a2)] == [(1, first), (1, second), (2, first)]
+    a1.refresh_from_db()
+    assert (a1.status, b1.status) == (PlanVersion.Status.LEGACY, PlanVersion.Status.ACTIVE)
+
+
 # ---------------------------------------------------------- plan changes --
 
 
