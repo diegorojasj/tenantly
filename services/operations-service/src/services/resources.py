@@ -12,7 +12,7 @@ from common.errors import InvalidError, NotFoundError
 from common.internal import audit
 
 from ..models import Booking, Resource
-from . import clock, fulfilment, shape
+from . import clock, downtimes, fulfilment, shape
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -50,6 +50,13 @@ def read(claims: TenantClaims, scope: str | None) -> dict[str, Any]:
                 booked[rid] = booked.get(rid, 0) + minutes
             elif rid not in upcoming or b.start < upcoming[rid]:
                 upcoming[rid] = b.start
+    # What takes each one out right now: its own downtime, else its location's.
+    down: dict[str, str] = {}
+    for d in downtimes.current(claims, locations):
+        if d.resource_id:
+            down[str(d.resource_id)] = d.reason
+        elif not d.offering_id:
+            down.update({str(r.id): d.reason for r in rows if r.location_id == d.location_id and str(r.id) not in down})
     return {
         "canEdit": claims.can("config.write"),
         "locations": [
@@ -65,6 +72,7 @@ def read(claims: TenantClaims, scope: str | None) -> dict[str, Any]:
                 "next": clock.stamp(upcoming[str(r.id)], claims.zone(str(r.location_id)))
                 if str(r.id) in upcoming
                 else None,
+                "downtime": down.get(str(r.id)),
             }
             for r in rows
         ],

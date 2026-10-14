@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from common.money import wire
 
-from . import money
+from . import downtimes, money
 from .clock import stamp
 from .fields import defs, visible
 from .fulfilment import people
@@ -55,6 +55,8 @@ def booking(claims: TenantClaims, b: Booking) -> dict[str, Any]:
         "price": wire(b.price),
         "currency": claims.currency,
         "paid": b.paid,
+        # The downtime it falls in, when one does (set by `bookings`): the desk moves or cancels it.
+        "downtime": None,
     }
 
 
@@ -63,7 +65,15 @@ def bookings(claims: TenantClaims, rows: Iterable[Booking]) -> list[dict[str, An
     rows = list(rows)
     owed = [str(b.id) for b in rows if b.customer_id and b.status == "completed" and not b.paid]
     settled = money.settled(claims, owed)
-    return [{**booking(claims, b), "paid": b.paid or str(b.id) in settled} for b in rows]
+    flagged = downtimes.flags(claims, rows)
+    return [
+        {
+            **booking(claims, b),
+            "paid": b.paid or str(b.id) in settled,
+            "downtime": downtimes.flag(claims, flagged[b.id]) if b.id in flagged else None,
+        }
+        for b in rows
+    ]
 
 
 def offering(o: Offering) -> dict[str, Any]:

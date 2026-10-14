@@ -11,7 +11,7 @@ from django.utils.translation import ngettext
 from common.money import ZERO, dec, label, wire
 
 from ..models import Booking, Customer, Offering, PolicyOverride, Resource
-from . import clock, documents, fulfilment, money, shape
+from . import clock, documents, downtimes, fulfilment, money, shape
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -88,6 +88,46 @@ def _either(words: list[str]) -> str:
     out = words[0]
     for other in words[1:]:
         out = _("%(first)s or %(second)s") % {"first": out, "second": other}
+    return out
+
+
+def _downtime_alerts(claims: TenantClaims, locations: set[str]) -> list[dict[str, Any]]:
+    """Bookings a downtime has put in doubt (the desk has to act), and what is unavailable right now."""
+    t = claims.template
+    now = clock.now()
+    out: list[dict[str, Any]] = []
+    clashing = downtimes.flags(
+        claims,
+        list(
+            shape.with_relations(
+                Booking.objects.filter(
+                    tenant_id=claims.tenant_id, location_id__in=locations, status__in=downtimes.LIVE, end__gt=now
+                )
+            )
+        ),
+    )
+    if clashing:
+        noun = t["terms"]["booking" if len(clashing) == 1 else "bookings"].lower()
+        out.append(
+            _alert(
+                "clashes",
+                "bad",
+                _("%(n)s %(bookings)s fall in a downtime") % {"n": len(clashing), "bookings": noun},
+                " · ".join(sorted({downtimes.describe(claims, d) for d in clashing.values()})[:3]),
+                "bookings",
+            )
+        )
+    unavailable = downtimes.current(claims, locations)
+    if unavailable:
+        out.append(
+            _alert(
+                "unavailable",
+                "warn",
+                ngettext("%(n)s unavailable now", "%(n)s unavailable now", len(unavailable)) % {"n": len(unavailable)},
+                " · ".join(downtimes.describe(claims, d) for d in unavailable[:3]),
+                "resources",
+            )
+        )
     return out
 
 
@@ -181,6 +221,7 @@ def _alerts(
                 "calendar",
             )
         )
+    alerts.extend(_downtime_alerts(claims, locations))
     down = list(Resource.objects.filter(tenant_id=claims.tenant_id, location_id__in=locations, status="out_of_service"))
     if down:
         alerts.append(
@@ -279,6 +320,8 @@ def calendar(claims: TenantClaims, scope: str | None, day_value: str | None) -> 
                 shape.resource(r) for r in Resource.objects.filter(tenant_id=claims.tenant_id, location_id=focus.id)
             ],
             "bookings": shape.bookings(claims, rows),
+            # Shaded on the timeline: a resource's row, or (offering and location-wide) the whole board.
+            "downtimes": downtimes.at(claims, focus.id, clock.at(day, 0, tz), clock.at(day + timedelta(days=1), 0, tz)),
         },
         "sites": [],
     }
