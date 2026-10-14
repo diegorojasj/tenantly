@@ -11,6 +11,8 @@ from common.internal import InternalAuth
 from ..schemas import (
     BalancesIn,
     ChargeIn,
+    EntriesByRefIn,
+    EntryIn,
     GrantIn,
     InvoicePaidIn,
     PlanAssignIn,
@@ -22,7 +24,7 @@ from ..schemas import (
     TenantRef,
     UsageIn,
 )
-from ..services import charges, console, overview, policy, repricing, subscriptions, usage
+from ..services import charges, console, ledger, overview, policy, repricing, subscriptions, usage
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -33,6 +35,17 @@ router = Router(tags=["internal"], auth=InternalAuth())
 @router.post("/charges")
 def create_charge(request: HttpRequest, body: ChargeIn) -> dict[str, str]:  # noqa: ARG001
     return {"id": str(charges.create(body).id)}
+
+
+@router.post("/entries")
+def record_entry(request: HttpRequest, body: EntryIn) -> dict[str, str]:  # noqa: ARG001
+    """Operations' outbox records a downtime's expense or income here; replays return the same line."""
+    return {"id": str(ledger.record(body).id)}
+
+
+@router.post("/entries/by-ref")
+def entries_by_ref(request: HttpRequest, body: EntriesByRefIn) -> dict[str, dict[str, Any]]:  # noqa: ARG001
+    return ledger.by_ref(body.tenant_id, [str(r) for r in body.ref_ids])
 
 
 @router.post("/bookings/{booking_id}/refund")

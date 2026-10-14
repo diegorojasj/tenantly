@@ -10,8 +10,8 @@ from ninja import Router
 
 from common.auth import TenantAuth, claims_of
 
-from ..schemas import CardIn, InvoiceIn, PlanChangeIn, PlanSettingsIn
-from ..services import charges, invoices, notices, overview, statements, stripe, subscriptions, usage
+from ..schemas import CardIn, InvoiceIn, ManualEntryIn, PlanChangeIn, PlanSettingsIn
+from ..services import charges, invoices, ledger, notices, overview, statements, stripe, subscriptions, usage
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -46,12 +46,32 @@ def revenue(request: HttpRequest, start: date, end: date, scope: str | None = No
     return charges.revenue(claims_of(request), scope, start, end)
 
 
-# ------------------------------------------------- the Tenantly plan --
-
-
 def _key(request: HttpRequest) -> str | None:
     """The client's Idempotency-Key: a retried change finds the one it already made."""
     return (request.headers.get("Idempotency-Key") or "")[:64] or None
+
+
+# ------------------------------------------- expenses and other income --
+
+
+@router.get("/ledger")
+def read_ledger(
+    request: HttpRequest, scope: str | None = None, start: date | None = None, end: date | None = None
+) -> dict[str, Any]:
+    return ledger.read(claims_of(request), scope, start, end)
+
+
+@router.post("/ledger")
+def add_entry(request: HttpRequest, body: ManualEntryIn) -> dict[str, Any]:
+    return ledger.entry_dict(ledger.add(claims_of(request), body, _key(request)))
+
+
+@router.post("/ledger/{entry_id}/void")
+def void_entry(request: HttpRequest, entry_id: uuid.UUID) -> dict[str, Any]:
+    return ledger.entry_dict(ledger.void(claims_of(request), str(entry_id)))
+
+
+# ------------------------------------------------- the Tenantly plan --
 
 
 @router.get("/plan")

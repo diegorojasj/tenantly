@@ -27,6 +27,40 @@ class ChargeIn(CamelSchema):
     key: str | None = Field(default=None, max_length=64)
 
 
+class EntryIn(CamelSchema):
+    """A ledger line operations records against a downtime (services/downtimes.py)."""
+
+    tenant_id: str
+    location_id: str
+    kind: Literal["income", "expense"]
+    category: str = Field(max_length=40)
+    description: str
+    amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")
+    date: date
+    source: Literal["manual", "downtime"] = "downtime"
+    ref_id: uuid.UUID | None = None
+    charged: bool = False
+    recorded_by: str = ""
+    key: str | None = Field(default=None, max_length=64)
+
+
+class EntriesByRefIn(CamelSchema):
+    tenant_id: str
+    ref_ids: list[uuid.UUID] = Field(max_length=500)
+
+
+class ManualEntryIn(CamelSchema):
+    """Typed in on the Payments page: rent, supplies, a refund from a supplier."""
+
+    location_id: str
+    kind: Literal["income", "expense"]
+    category: str = Field(min_length=1, max_length=40)
+    description: str = Field(default="", max_length=200)
+    amount: Decimal = Field(gt=0, lt=100_000_000, max_digits=10, decimal_places=2)
+    on: date | None = None
+
+
 class TenantRef(CamelSchema):
     tenant_id: str
 
