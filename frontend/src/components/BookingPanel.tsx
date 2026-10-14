@@ -69,6 +69,13 @@ export default function BookingPanel(props: {
           <span class={['pill', booking().paid ? 'ok' : 'neutral']}>{booking().paid ? tr('booking.paid') : tr('booking.notPaid')}</span>
         </Show>
       </div>
+      <Show when={booking().downtime}>
+        {(d) => (
+          <p role="status" class="error banner">
+            <Icon name="alert" size={14} /> {tr('downtime.flagged', { what: d().what, reason: tr(`downtime.reason_${d().reason}`).toLowerCase() })}
+          </p>
+        )}
+      </Show>
 
       <Show when={props.canManage && nextStatuses(t(), booking().status).length}>
         <div class="row start">

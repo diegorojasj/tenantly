@@ -56,6 +56,16 @@ function CalendarPage() {
         <span class="muted">{p.resource.status === 'out_of_service' ? tr('calendar.outOfService') : p.resource.role}</span>
       </div>
       <div class="tl-track">
+        {/* Its own downtime, or the whole location's; offering downtimes flag their bookings instead. */}
+        <For each={cal.data.board!.downtimes.filter((d) => d.resourceId === p.resource.id || (!d.resourceId && !d.offeringId))}>
+          {(d) => (
+            <span
+              class="tl-down"
+              style={{ left: `${pos(d.start)}%`, width: `${pos(d.end) - pos(d.start)}%` }}
+              title={`${tr(`downtime.reason_${d.reason}`)}${d.note ? ` · ${d.note}` : ''}`}
+            />
+          )}
+        </For>
         <For each={cal.data.board!.bookings.filter((b) => b.resourceIds.includes(p.resource.id))}>
           {(b) => <Bar b={b} />}
         </For>
@@ -66,7 +76,7 @@ function CalendarPage() {
   const Bar = (p: { b: Booking }) => (
     <button
       type="button"
-      class={['tl-bar', `s-${p.b.status}`, { picked: openId() === p.b.id, group: !p.b.customerId }]}
+      class={['tl-bar', `s-${p.b.status}`, { picked: openId() === p.b.id, group: !p.b.customerId, clash: !!p.b.downtime }]}
       style={{ left: `${pos(p.b.start)}%`, width: `${pos(p.b.end) - pos(p.b.start)}%` }}
       title={`${p.b.start.slice(11)}–${fmtUntil(p.b.start, p.b.end)} · ${p.b.offeringName} · ${t().status[p.b.status]}`}
       onClick={() => setOpenId(p.b.id)}

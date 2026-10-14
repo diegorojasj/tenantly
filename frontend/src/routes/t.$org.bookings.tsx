@@ -166,6 +166,13 @@ function BookingsPage() {
                     <td class="muted">{b.resourceNames.join(' · ')}</td>
                     <td>
                       <StatusPill status={b.status} labels={t().status} />
+                      <Show when={b.downtime}>
+                        {(d) => (
+                          <span class="pill bad" title={tr('downtime.flagged', { what: d().what, reason: tr(`downtime.reason_${d().reason}`).toLowerCase() })}>
+                            {tr('downtime.flaggedShort')}
+                          </span>
+                        )}
+                      </Show>
                     </td>
                     <td class="num mono">
                       {fmtMoney(b.price, b.currency)}
