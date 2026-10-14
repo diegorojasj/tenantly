@@ -1,5 +1,6 @@
 from .charge import Charge
 from .invoice import Invoice
+from .ledger import Entry
 from .plan import PlanVersion
 from .policy import BillingPolicy
 from .statement import BillingNotice, PlanInvoice, PlanInvoiceLine, ProviderEvent
@@ -13,6 +14,7 @@ __all__ = [
     "BillingPolicy",
     "Charge",
     "EntitlementGrant",
+    "Entry",
     "Invoice",
     "PlanInvoice",
     "PlanInvoiceLine",
