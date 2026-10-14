@@ -1,8 +1,10 @@
 """Bookings: availability, booking, class sessions, and the lifecycle.
 
 Every write locks the resources it touches before checking for clashes, so two
-desks booking the same coach at the same moment can't both succeed. Money
-follows the lifecycle through the billing service, and the policies decide how.
+desks booking the same coach at the same moment can't both succeed. Nothing is
+booked into a downtime (services/downtimes.py) of the location, the offering, or
+any resource it needs. Money follows the lifecycle through the billing service,
+and the policies decide how.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from common.errors import ConflictError, ForbiddenError, InvalidError, NotFoundE
 from common.internal import audit
 
 from ..models import Attendance, Booking, Customer, Offering, Resource, Subject
-from . import clock, documents, fields, fulfilment, money, parties, policies, shape, usage
+from . import clock, documents, downtimes, fields, fulfilment, money, parties, policies, shape, usage
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -266,15 +268,29 @@ def availability(
         return {"slots": [], "reason": exc.detail + "."}
     opens, closes = claims.hours(location_id)
     now = clock.now()
+    # The location's and the offering's downtimes, read once for the day (and a span's last end).
+    closed = downtimes.windows(
+        claims,
+        location_id,
+        offering,
+        clock.at(day, opens, tz),
+        _end(offering, clock.at(day, closes, tz), tz, minutes, units),
+    )
     slots = []
     for minute in range(opens, closes, SLOT_STEP):
         start = clock.at(day, minute, tz)
         end = _end(offering, start, tz, minutes, units)
-        if start < now or not _fits(claims, location_id, start, end) or not fulfilment.free(needs, start, end):
+        if start < now or not _fits(claims, location_id, start, end) or downtimes.closing(closed, start, end):
+            continue
+        if not fulfilment.free(needs, start, end):
             continue
         slots.append(clock.clock(minute))
     reason = ""
-    if not slots:
+    if not slots and closed:
+        reason = _("Unavailable that day: %(what)s.") % {
+            "what": ", ".join(downtimes.describe(claims, d) for d in closed[:2])
+        }
+    elif not slots:
         chosen = [r.name for n in needs for r in n.picked]
         reason = (
             _("Nothing free that day for %(names)s. Try another day or person.") % {"names": ", ".join(chosen)}
@@ -322,6 +338,7 @@ def create(claims: TenantClaims, body: BookingIn) -> Booking:
     day = clock.local(start, tz).date()
     _window_check(claims, body.location_id, day)
     _hours_check(claims, body.location_id, start, end)
+    downtimes.demand_open(claims, body.location_id, offering, start, end)
     documents.demand(claims, customer, day, body.location_id, subject)
 
     # Picked resources must be free; the rest are interchangeable, so the first free ones are taken.
@@ -376,6 +393,7 @@ def schedule_session(claims: TenantClaims, body: SessionIn) -> list[Booking]:
         if week == 0:
             _window_check(claims, body.location_id, wall.date())
         _hours_check(claims, body.location_id, start, end)
+        downtimes.demand_open(claims, body.location_id, offering, start, end)
         when = _("on %(day)s at %(time)s") % {"day": dateformat.format(wall, "D d M"), "time": f"{wall:%H:%M}"}
         assigned = fulfilment.take(needs, start, end, when)
         session = Booking.objects.create(
@@ -412,6 +430,7 @@ def join(claims: TenantClaims, booking_id: str, customer_id: str) -> Booking:
     if session.status != Booking.Status.CONFIRMED or session.start < clock.now():
         msg = _("That session is no longer open")
         raise InvalidError(msg)
+    downtimes.refuse_seat(claims, session)
     customer = _customer(claims, customer_id)
     tz = claims.zone(str(session.location_id))
     day = clock.local(session.start, tz).date()
@@ -509,7 +528,9 @@ def set_status(claims: TenantClaims, booking_id: str, status: str) -> Booking:
     if status == "cancelled":
         money.refund_booking(claims, str(booking.id))
         hours = int(policies.effective(claims, str(booking.location_id), "booking.cancelHours"))
-        if booking.customer and booking.start - now < timedelta(hours=hours):
+        # Called off because of a downtime is the business's doing: no late fee.
+        late = booking.start - now < timedelta(hours=hours)
+        if booking.customer and late and not downtimes.covering(claims, booking):
             _fee(claims, booking, "Late cancellation fee")
         # Seats paid from a pack get their credit back when a class is called off.
         parties.return_credits(booking)
