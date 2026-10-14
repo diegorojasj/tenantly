@@ -4,11 +4,12 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 
 import ConfirmButton from '../components/ConfirmButton';
 import Icon from '../components/Icon';
+import Ledger from '../components/Ledger';
 import { PageHead, Panel, Stat } from '../components/ui';
 import { fmtMoney, toCents } from '../lib/format';
 import { t as tr } from '../lib/i18n';
 import { issueInvoice, settleCharge, settleInvoice } from '../lib/ops';
-import { invoicesQuery, paymentsQuery, prefetch, tenantQuery } from '../lib/queries';
+import { invoicesQuery, ledgerQuery, paymentsQuery, prefetch, tenantQuery } from '../lib/queries';
 import { useTenantScope } from '../lib/scope';
 import { notify } from '../lib/toast';
 import type { ChargeStatus } from '../lib/types';
@@ -16,12 +17,14 @@ import type { ChargeStatus } from '../lib/types';
 // Payments — one job: know what's owed and what's been paid, and act on it.
 // Open charges come first, oldest debt on top; the last 30 days of settled
 // history follow. A customer's open charges can be gathered onto an invoice
-// (with tax per the business's settings), paid or voided as one.
+// (with tax per the business's settings), paid or voided as one. Below, what
+// the business spends and earns beyond its charges, for the real net.
 export const Route = createFileRoute('/t/$org/payments')({
   loaderDeps: ({ search }) => ({ scope: search.scope ?? '' }),
   loader: ({ context, params, deps }) => {
     prefetch(context.queryClient, paymentsQuery(params.org, deps.scope));
     prefetch(context.queryClient, invoicesQuery(params.org, deps.scope));
+    prefetch(context.queryClient, ledgerQuery(params.org, deps.scope));
   },
   head: () => ({ meta: [{ title: tr('payments.headTitle') }] }),
   component: PaymentsPage,
@@ -53,6 +56,11 @@ function PaymentsPage() {
   }));
   const t = () => ctx.data.tenant.template;
   const s = () => pay.data.summary;
+  // Locations in scope a ledger line can be filed under, the focused one first.
+  const sites = () =>
+    ctx.data.nodes
+      .filter((n) => n.kind === 'location' && n.reachable && (n.id === ctx.data.scopeId || ctx.data.path.at(-1)!.kind !== 'location'))
+      .sort((a, b) => Number(b.id === ctx.data.scopeId) - Number(a.id === ctx.data.scopeId));
 
   const [filter, setFilter] = createSignal<Filter>('open', { name: 'paymentsFilter' });
   const [text, setText] = createSignal('', { name: 'paymentsText' });
@@ -272,6 +280,8 @@ function PaymentsPage() {
         </div>
         <Show when={settleInv.error}>{(error) => <p role="alert" class="error">{error()?.message}</p>}</Show>
       </Panel>
+
+      <Ledger org={org()} scope={scope()} template={t()} sites={sites()} />
     </div>
   );
 }
