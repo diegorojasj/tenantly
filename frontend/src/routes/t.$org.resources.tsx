@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/solid-router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 
 import ConfirmButton from '../components/ConfirmButton';
+import Downtimes from '../components/Downtimes';
 import FieldInput from '../components/FieldInput';
 import Icon from '../components/Icon';
 import { PageHead, Panel } from '../components/ui';
@@ -11,7 +12,7 @@ import { fmtDay } from '../lib/format';
 import { t as tr } from '../lib/i18n';
 import { resourceType } from '../lib/fulfilment';
 import { createResource, setResourceStatus } from '../lib/ops';
-import { prefetch, resourcesQuery, tenantQuery } from '../lib/queries';
+import { downtimesQuery, prefetch, resourcesQuery, tenantQuery } from '../lib/queries';
 import { useTenantScope } from '../lib/scope';
 import { notify } from '../lib/toast';
 import type { Resource, ScopeNode, Template } from '../lib/types';
@@ -19,11 +20,13 @@ import type { Resource, ScopeNode, Template } from '../lib/types';
 // Resources — one job: define what delivers the work and see how busy it
 // is. The template names the resource types (team members, rooms, units…);
 // to the calendar they are all the same thing: rows that hold bookings.
-// Utilization is booked time over open hours, last 7 days.
+// Utilization is booked time over open hours, last 7 days. Below them, the
+// unavailability list: repairs, absences and closures that stop booking for a while.
 export const Route = createFileRoute('/t/$org/resources')({
   loaderDeps: ({ search }) => ({ scope: search.scope ?? '' }),
   loader: ({ context, params, deps }) => {
     prefetch(context.queryClient, resourcesQuery(params.org, deps.scope));
+    prefetch(context.queryClient, downtimesQuery(params.org, deps.scope));
   },
   head: () => ({ meta: [{ title: tr('resources.pageTitle') }] }),
   component: ResourcesPage,
@@ -109,6 +112,9 @@ function ResourcesPage() {
                       <Show when={r.resource.status === 'out_of_service'}>
                         <span class="pill warn">{tr('resources.outOfService')}</span>
                       </Show>
+                      <Show when={r.downtime}>
+                        {(reason) => <span class="pill bad">{tr(`downtime.reason_${reason()}`)}</span>}
+                      </Show>
                     </td>
                     <td class="muted">{r.resource.role}</td>
                     <td class="muted">
@@ -162,6 +168,8 @@ function ResourcesPage() {
         </div>
         <Show when={status.error}>{(error) => <p role="alert" class="error">{error()?.message}</p>}</Show>
       </Panel>
+
+      <Downtimes org={org()} scope={scope()} template={t()} sites={data.data.locations} />
 
       <Show when={adding()}>
         <AddResource

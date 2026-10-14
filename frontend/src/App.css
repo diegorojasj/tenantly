@@ -2390,6 +2390,10 @@ input[type='text']:focus {
   color: var(--bad);
 }
 
+.good {
+  color: var(--ok);
+}
+
 .btn.small {
   padding: 4px 10px;
   font-size: 12.5px;
