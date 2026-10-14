@@ -13,7 +13,7 @@ A requirement is `{type, quantity, pick, role, where}`:
   resources whose attributes equal the given values.
 
 Resources may nest (property → unit) inside one location; a booking holding
-either one makes the other busy.
+either one makes the other busy, and so does a `Downtime` on either one.
 """
 
 from __future__ import annotations
@@ -21,11 +21,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from django.db.models import Q
 from django.utils.translation import gettext as _
 
 from common.errors import ConflictError, InvalidError
 
-from ..models import Booking, Resource
+from ..models import Booking, Downtime, Resource
 from . import fields
 
 if TYPE_CHECKING:
@@ -150,7 +151,7 @@ def _matches(r: Resource, rule: dict[str, Any]) -> bool:
     return all(r.attributes.get(k) == v for k, v in (rule.get("where") or {}).items())
 
 
-def _families(rows: list[Resource]) -> None:
+def families(rows: list[Resource]) -> None:
     """Attach to each resource the ids a booking of it collides with: itself, its ancestors, its descendants."""
     by_id = {r.id: r for r in rows}
     children: dict[Any, list[Any]] = {}
@@ -172,13 +173,24 @@ def _families(rows: list[Resource]) -> None:
         r.family = family  # type: ignore[attr-defined]
 
 
-def busy(resource: Resource, start: datetime, end: datetime) -> bool:
+def down(resource: Resource, start: datetime, end: datetime) -> Downtime | None:
+    """The downtime that takes the resource (or one nested with it) out between `start` and `end`."""
     family = getattr(resource, "family", {resource.id})
     return (
+        Downtime.objects.filter(resource_id__in=family, start__lt=end)
+        .filter(Q(end__isnull=True) | Q(end__gt=start))
+        .first()
+    )
+
+
+def busy(resource: Resource, start: datetime, end: datetime) -> bool:
+    family = getattr(resource, "family", {resource.id})
+    booked = (
         Booking.objects.filter(resources__id__in=family, start__lt=end, end__gt=start)
         .exclude(status=Booking.Status.CANCELLED)
         .exists()
     )
+    return booked or down(resource, start, end) is not None
 
 
 def needs(
@@ -214,7 +226,7 @@ def needs(
             msg = _("No %(what)s is in service here. Add one in Resources") % {"what": need.what}
             raise InvalidError(msg)
         out.append(need)
-    _families(rows)
+    families(rows)
     if lock and out:
         ids = {i for n in out for r in (n.picked if n.rule.get("pick") else n.pool) for i in r.family}  # type: ignore[attr-defined]
         list(Resource.objects.select_for_update().filter(id__in=ids).order_by("id").values_list("id", flat=True))
@@ -230,6 +242,14 @@ def take(needs_: list[Need], start: datetime, end: datetime, when: str = "") -> 
     for need in needs_:
         if need.rule.get("pick"):
             for r in need.picked:
+                out = down(r, start, end)
+                if out:
+                    msg = _("%(name)s is unavailable %(when)s (%(reason)s)") % {
+                        "name": r.name,
+                        "when": when or _("then"),
+                        "reason": out.get_reason_display().lower(),
+                    }
+                    raise ConflictError(msg)
                 if busy(r, start, end):
                     msg = (
                         _("%(name)s is busy %(when)s") % {"name": r.name, "when": when}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -52,6 +53,31 @@ class ResourceIn(CamelSchema):
 
 class ResourceStatusIn(CamelSchema):
     status: Literal["available", "out_of_service"]
+
+
+class DowntimeIn(CamelSchema):
+    """A resource, an offering at a location, or (with neither) the whole location taken out of use."""
+
+    location_id: str | None = None
+    resource_id: str | None = None
+    offering_id: str | None = None
+    reason: Literal["maintenance", "repair", "unfit", "absence", "closure", "other"]
+    note: str = Field(default="", max_length=300)
+    # Wall-clock stamps at the location ("2026-10-14T09:00"); no start means now, no end until it's ended.
+    start: str | None = None
+    end: str | None = None
+
+
+class DowntimeMoneyIn(CamelSchema):
+    kind: Literal["income", "expense"]
+    amount: Decimal = Field(gt=0, lt=100_000_000, max_digits=10, decimal_places=2)
+    description: str = Field(default="", max_length=200)
+    # Free text for the ledger (Parts, Labour, Insurance…); defaults to the downtime's reason.
+    category: str = Field(default="", max_length=40)
+    # Income only: charge it to this customer (damage they caused) instead of recording it as other income.
+    customer_id: str | None = None
+    # The day it was paid or earned; today at the location by default.
+    on: date | None = None
 
 
 class CustomerIn(CamelSchema):

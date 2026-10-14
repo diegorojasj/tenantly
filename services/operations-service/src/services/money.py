@@ -70,6 +70,56 @@ def raise_charge(  # noqa: PLR0913 - mirrors the charge's own fields
     )
 
 
+def record_entry(  # noqa: PLR0913 - mirrors the ledger line's own fields
+    claims: TenantClaims,
+    *,
+    location_id: str,
+    kind: str,
+    category: str,
+    description: str,
+    amount: Decimal,
+    on: date,
+    ref: str,
+    charged: bool = False,
+) -> None:
+    """A line on the business ledger (an expense, or income not charged to anyone) tied to a downtime.
+
+    `charged` lines only record that the money was charged to a customer: the charge
+    already counts as revenue, so the ledger lists them without adding them up again.
+    """
+    enqueue(
+        claims,
+        "/internal/entries",
+        {
+            "locationId": location_id,
+            "kind": kind,
+            "category": category,
+            "description": description,
+            "amount": wire(amount),
+            "currency": claims.currency,
+            "date": on.isoformat(),
+            "source": "downtime",
+            "refId": ref,
+            "charged": charged,
+            "recordedBy": claims.user_name,
+        },
+    )
+
+
+def ledger_for(claims: TenantClaims, ref_ids: list[str]) -> dict[str, Any]:
+    """Per downtime: `{"income", "expense", "entries"}` from billing's ledger.
+
+    Read-only and best effort: if billing can't answer, the downtimes show no money.
+    """
+    try:
+        return call(
+            "billing", "POST", "/internal/entries/by-ref", json={"tenantId": claims.tenant_id, "refIds": ref_ids}
+        )
+    except (ApiError, RuntimeError) as exc:
+        log.warning("downtime ledger unavailable: %s", exc)
+        return {}
+
+
 def refund_booking(claims: TenantClaims, booking_id: str) -> None:
     enqueue(claims, f"/internal/bookings/{booking_id}/refund", {})
 

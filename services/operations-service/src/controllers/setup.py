@@ -1,4 +1,4 @@
-"""Set up: Catalog, Resources, Policies. Tenant-token auth."""
+"""Set up: Catalog, Resources (and their downtime), Policies. Tenant-token auth."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from ninja import Router
 from common.auth import TenantAuth, claims_of
 from common.schemas import Ok
 
-from ..schemas import OfferingIn, PolicyIn, ResourceIn, ResourceStatusIn
-from ..services import catalog, policies, resources, shape
+from ..schemas import DowntimeIn, DowntimeMoneyIn, OfferingIn, PolicyIn, ResourceIn, ResourceStatusIn
+from ..services import catalog, downtimes, policies, resources, shape
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -46,6 +46,28 @@ def create_resource(request: HttpRequest, body: ResourceIn) -> dict[str, Any]:
 @router.post("/resources/{resource_id}/status")
 def resource_status(request: HttpRequest, resource_id: str, body: ResourceStatusIn) -> dict[str, Any]:
     return shape.resource(resources.set_status(claims_of(request), resource_id, body.status))
+
+
+@router.get("/downtimes")
+def read_downtimes(request: HttpRequest, scope: str | None = None) -> dict[str, Any]:
+    return downtimes.read(claims_of(request), scope)
+
+
+@router.post("/downtimes")
+def create_downtime(request: HttpRequest, body: DowntimeIn) -> dict[str, str]:
+    return {"id": str(downtimes.create(claims_of(request), body).id)}
+
+
+@router.post("/downtimes/{downtime_id}/end")
+def end_downtime(request: HttpRequest, downtime_id: str) -> dict[str, bool]:
+    """Back in use now; one that hasn't started is withdrawn."""
+    return {"withdrawn": downtimes.finish(claims_of(request), downtime_id) is None}
+
+
+@router.post("/downtimes/{downtime_id}/money", response=Ok)
+def downtime_money(request: HttpRequest, downtime_id: str, body: DowntimeMoneyIn) -> Ok:
+    downtimes.record_money(claims_of(request), downtime_id, body)
+    return Ok()
 
 
 @router.get("/policies")
