@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 16:24+0000\n"
+"POT-Creation-Date: 2026-10-13 23:39+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -15,25 +15,26 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
 
 #: services/catalog.py:37
 msgid "That plan isn't offered"
 msgstr "Ese plan no está disponible"
 
-#: services/charges.py:141
+#: services/charges.py:169
 msgid "That charge is outside your scope"
 msgstr "Ese cargo está fuera de tu alcance"
 
-#: services/charges.py:145
+#: services/charges.py:173
 msgid "Only open charges can be collected"
 msgstr "Solo se pueden cobrar los cargos abiertos"
 
-#: services/charges.py:148
+#: services/charges.py:176
 msgid "That charge is on an open invoice: collect the invoice instead"
 msgstr "Ese cargo está en una factura abierta: cobra la factura"
 
-#: services/charges.py:154
+#: services/charges.py:182
 msgid "Only paid charges can be refunded"
 msgstr "Solo se pueden reembolsar los cargos pagados"
 
@@ -78,6 +79,18 @@ msgstr "Solo se pueden pagar las facturas abiertas"
 msgid "Only open invoices can be voided"
 msgstr "Solo se pueden anular las facturas abiertas"
 
+#: services/ledger.py:66
+msgid "The period must start before it ends"
+msgstr "El periodo debe empezar antes de terminar"
+
+#: services/ledger.py:174
+msgid "That entry is outside your scope"
+msgstr "Ese movimiento está fuera de tu alcance"
+
+#: services/ledger.py:177
+msgid "That entry is already void"
+msgstr "Ese movimiento ya está anulado"
+
 #: services/policy.py:96
 msgid ""
 "Days overdue must run forward: limited, then restricted, then canceled (1 to "
@@ -118,7 +131,7 @@ msgstr "El margen para uso tardío va de 0 a 336 horas"
 msgid "The default spend cap goes from 1 to 10 times the plan's price"
 msgstr "El tope de gasto por defecto va de 1 a 10 veces el precio del plan"
 
-#: services/policy.py:121 services/subscriptions.py:216
+#: services/policy.py:121 services/subscriptions.py:257
 msgid "Alerts go from 1% to 100% of the allowance"
 msgstr "Las alertas van del 1 % al 100 % de lo incluido"
 
@@ -196,52 +209,55 @@ msgstr "Firma de webhook inválida"
 msgid "Stale webhook"
 msgstr "Webhook caducado"
 
-#: services/subscriptions.py:107
-msgid "Someone changed the plan in the meantime: look again before changing it"
-msgstr "Alguien cambió el plan mientras tanto: revísalo antes de cambiarlo"
-
-#: services/subscriptions.py:114
-msgid "This subscription has ended: reactivate it first"
-msgstr "Esta suscripción terminó: reactívala primero"
-
-#: services/subscriptions.py:131
-msgid "You're already on this plan"
-msgstr "Ya tienes este plan"
-
-#: services/subscriptions.py:170
-msgid "The plan already ends with this period"
-msgstr "El plan ya termina con este periodo"
-
-#: services/subscriptions.py:190
-msgid "The plan isn't ending"
-msgstr "El plan no está por terminar"
-
-#: services/subscriptions.py:193
-msgid "Pay the open Tenantly invoices first: that reactivates the plan"
-msgstr "Paga primero las facturas abiertas de Tenantly: eso reactiva el plan"
-
-#: services/subscriptions.py:220
-msgid "Your plan already caps every period at the next plan's price"
-msgstr "Tu plan ya limita cada periodo al precio del plan siguiente"
-
-#: services/subscriptions.py:223
-msgid "The spend cap can't be below the plan's price"
-msgstr "El tope de gasto no puede ser menor que el precio del plan"
-
-#: services/subscriptions.py:241
-msgid "No extension is available right now"
-msgstr "Ahora no hay una prórroga disponible"
-
-#: services/subscriptions.py:287
-msgid "A Custom plan needs its terms, and only a Custom plan takes them"
-msgstr ""
-"Un plan Custom necesita sus condiciones, y solo un plan Custom las lleva"
-
+#: services/subscriptions.py:106
 msgid "Only the business's owner can change its Tenantly plan"
 msgstr "Solo el propietario del negocio puede cambiar su plan de Tenantly"
 
+#: services/subscriptions.py:124
+msgid "Someone changed the plan in the meantime: look again before changing it"
+msgstr "Alguien cambió el plan mientras tanto: revísalo antes de cambiarlo"
+
+#: services/subscriptions.py:131
+msgid "This subscription has ended: reactivate it first"
+msgstr "Esta suscripción terminó: reactívala primero"
+
+#: services/subscriptions.py:146
 msgid "The plan ends with this period: resume it before changing plans"
 msgstr "El plan termina con este periodo: reanúdalo antes de cambiar de plan"
 
+#: services/subscriptions.py:152
+msgid "You're already on this plan"
+msgstr "Ya tienes este plan"
+
+#: services/subscriptions.py:199
 msgid "No plan change is waiting for the renewal"
 msgstr "No hay ningún cambio de plan pendiente para la renovación"
+
+#: services/subscriptions.py:211
+msgid "The plan already ends with this period"
+msgstr "El plan ya termina con este periodo"
+
+#: services/subscriptions.py:231
+msgid "The plan isn't ending"
+msgstr "El plan no está por terminar"
+
+#: services/subscriptions.py:234
+msgid "Pay the open Tenantly invoices first: that reactivates the plan"
+msgstr "Paga primero las facturas abiertas de Tenantly: eso reactiva el plan"
+
+#: services/subscriptions.py:261
+msgid "Your plan already caps every period at the next plan's price"
+msgstr "Tu plan ya limita cada periodo al precio del plan siguiente"
+
+#: services/subscriptions.py:264
+msgid "The spend cap can't be below the plan's price"
+msgstr "El tope de gasto no puede ser menor que el precio del plan"
+
+#: services/subscriptions.py:282
+msgid "No extension is available right now"
+msgstr "Ahora no hay una prórroga disponible"
+
+#: services/subscriptions.py:328
+msgid "A Custom plan needs its terms, and only a Custom plan takes them"
+msgstr ""
+"Un plan Custom necesita sus condiciones, y solo un plan Custom las lleva"
