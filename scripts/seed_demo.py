@@ -714,6 +714,9 @@ def main() -> None:
             sys.exit(f"  ✗ {exc}\n  Run again with --reset to start the demo businesses over.")
         plan(seeder.slug, spec, args.identity_container)
         history(tenant_id, spec, args.days, args.container)
+    import seed_downtime  # noqa: PLC0415 - it imports this module
+
+    seed_downtime.seed(api, session, "en", demo)
     print(f"\nDone. Sign in at http://localhost:8080 as {OWNER[1]} / {PASSWORD}")
 
 
