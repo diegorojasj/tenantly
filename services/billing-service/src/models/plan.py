@@ -46,7 +46,15 @@ class PlanVersion(models.Model):
     class Meta:
         ordering = ["rank", "-version"]
         constraints = [
-            models.UniqueConstraint(fields=["code", "version"], name="one_plan_version_number"),
+            # Public tiers are numbered once; each business numbers its own Custom versions.
+            models.UniqueConstraint(
+                fields=["code", "version"], condition=Q(tenant_id__isnull=True), name="one_plan_version_number"
+            ),
+            models.UniqueConstraint(
+                fields=["tenant_id", "code", "version"],
+                condition=Q(tenant_id__isnull=False),
+                name="one_custom_plan_version_number",
+            ),
             models.CheckConstraint(condition=Q(base_price__gte=0), name="plan_price_not_negative"),
         ]
 
